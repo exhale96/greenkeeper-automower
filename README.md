@@ -43,14 +43,17 @@ This repo is mostly for demonstration purposes, but if you wish to try using the
 python3 -m venv greenkeeper_project
 source greenkeeper_project/bin/activate
 ```
-2. Install all required dependancies listed above (preferably with pip). Alternatively execute this command to install all dependancies:
-
-```bash
-magic command that installs them all here
-```
-
-3. Clone the repo:
+2. Clone the repo:
 
 ```bash
 git clone https://github.com/yourusername/greenkeeper.git
 cd greenkeeper
+```
+
+3. Install all required dependancies by executing "requirements.txt" 
+
+```bash
+pip install -r requirements.txt
+```
+
+
