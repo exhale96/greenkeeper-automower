@@ -73,7 +73,11 @@ class MotorDriver:
         accelerometer_data = self.imu.get_accel_data()
         gyroscope_data = self.imu.get_gyro_data()
         temperature = self.imu.get_temp()
-        return accelerometer_data, gyroscope_data, temperature # Add additional returns here if needed (commented out above)
+        current_time = time.time()
+        dt = current_time - last_time
+        last_time = current_time
+        yaw += g['z']*dt
+        return yaw
 
     def set_motor(self, left_speed, right_speed):
         """
@@ -161,11 +165,15 @@ if __name__ == "__main__":
         screen.blit(fps_text, (10, 10))
 
         ## IMU Reading ##
-        a, g, t = motor_driver.read_imu()
+        yaw = motor_driver.read_imu()
+
+        """
         current_time = time.time()
         dt = current_time - last_time
         last_time = current_time
-        yaw += g['z']*dt
+        yaw += g['z']*dt"""
+
+        
         yaw_text = font.render(f"Yaw: {yaw:.2f} degrees", True, (255, 255, 0))
         print(yaw_text)
         screen.blit(yaw_text, (252, 610))
