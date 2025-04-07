@@ -17,7 +17,7 @@ Then heavily based on a unavco original.
 Command to run this script:
 python rtk_coords.py -u (put email here) -p none rtk2go.com 2101 (NAME OF BASE STATION)
 
-python rtk_coords.py -f output.txt -u (put email here) -p none rtk2go.com 2101 (NAME OF BASE STATION)
+python rtk_coords.py -u (put email here) -p none rtk2go.com 2101 VIAM_BASE2
 
 
 """

@@ -22,7 +22,7 @@ def process_frame():
 
     ## MiDaS Depth Calculations (This lags the RC mode heavily, but tbh neither CV model is needed in RC mode) ##
     #img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) # Convert the frame for depth estimation
-    input_batch = transform(frame)
+    """input_batch = transform(frame)
 
     with torch.no_grad():
         prediction = midas(input_batch)
@@ -77,7 +77,7 @@ def process_frame():
             # Draw the proximity and depth label for each object (ensure proper positioning)
             text_position = (x1, y1 + 25)  # Position the label just above the bounding box
             cv2.putText(annotated_frame, label, text_position, cv2.FONT_HERSHEY_SIMPLEX, 0.5,
-                        (0, 255, 255), 1, cv2.LINE_AA)
+                        (0, 255, 255), 1, cv2.LINE_AA)"""
     return annotated_frame, fps
 
 # Set up the camera with Picam

@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 from picamera2 import Picamera2
 from computer_vision import process_frame
+from mapper import LawnMowerMapping
 
 imgsz = 640 # Declares
 pygame.init() #init pygame for arrow-key robot control
@@ -37,13 +38,14 @@ IMU_SDA = 2 # GPIO Pin for imu SDA
 IMU_SCL = 3 # GPUI Pin for imu SCL
 '''
 
+"""
 # IMU SETUP
 IMU = mpu6050.mpu6050(0x68)
 IMU_SDA = 2 # GPIO Pin for imu SDA
 IMU_SCL = 3 # GPUI Pin for imu SCL
 alpha = 0.98
 yaw = 0.0
-last_time = time.time()
+last_time = time.time()"""
 
 class MotorDriver:
 
@@ -74,10 +76,10 @@ class MotorDriver:
         gyroscope_data = self.imu.get_gyro_data()
         temperature = self.imu.get_temp()
         current_time = time.time()
-        dt = current_time - last_time
-        last_time = current_time
-        yaw += g['z']*dt
-        return yaw
+        dt = current_time - self.last_time
+        self.last_time = current_time
+        self.yaw += gyroscope_data['z']*dt
+        return self.yaw
 
     def set_motor(self, left_speed, right_speed):
         """
@@ -118,6 +120,8 @@ if __name__ == "__main__":
     motor_driver = MotorDriver()
     speed = 0.3
     blade_speed = 0.3
+    lawn_mower_map = LawnMowerMapping('../assets/raw_gps.txt','../assets/maps/map1.txt', update_interval=0.1)
+    lawn_mower_map.read_gps_coordinates()
 
     ## RC Mode Control Loop ##
     while True:
@@ -129,10 +133,11 @@ if __name__ == "__main__":
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
                     print("Up Arrow Pressed: Move Forward")
-                    motor_driver.set_motor(speed, speed)
+                    print("Speed: ", speed)
+                    motor_driver.set_motor(-speed, -speed)
                 elif event.key == pygame.K_DOWN:
                     print("Down Arrow Pressed: Move Backward")
-                    motor_driver.set_motor(-speed, -speed)
+                    motor_driver.set_motor(speed, speed)
                 elif event.key == pygame.K_LEFT:
                     print("Left Arrow Pressed: Turn Left")
                     motor_driver.set_motor(-speed, speed)

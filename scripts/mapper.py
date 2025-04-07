@@ -19,7 +19,6 @@ class LawnMowerMapping:
         self.ax.set_xlabel("Longitude")
         self.ax.set_ylabel("Latitude")
         self.ax.set_title("GPS Path Trace")
-        print("Press 'p' to pause/resume the map update.")
 
     def read_gps_coordinates(self):
         """Reads new GPS coordinates from the file."""
@@ -49,7 +48,6 @@ class LawnMowerMapping:
                             continue
                     
                     self.update_plot()
-                    self.check_pause()
                 except FileNotFoundError:
                     print(f"File {self.file_path} not found. Waiting for file to be created.")
                     time.sleep(self.update_interval)
@@ -91,14 +89,9 @@ class LawnMowerMapping:
         plt.draw()
         plt.pause(self.update_interval)
 
-    def check_pause(self):
-        """Checks if the user wants to pause/resume the updates."""
-        if plt.waitforbuttonpress(0.1):  # Wait for a key press event
-            key = input("Press 'p' to pause/resume: ")
-            if key.lower() == 'p':
-                self.paused = not self.paused
-                print("Paused" if self.paused else "Resumed")
 
 if __name__ == "__main__":
     lawn_mower_map = LawnMowerMapping('../assets/raw_gps.txt','../assets/maps/map1.txt', update_interval=0.1)
     lawn_mower_map.read_gps_coordinates()
+
+
