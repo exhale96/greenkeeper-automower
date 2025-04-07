@@ -1,6 +1,6 @@
 # 🌿 GreenKeeper
 
-GreenKeeper is a Raspberry Pi-powered autonomous lawn robot built with computer vision, real-time controls, and a simple GUI for state management. It’s designed to map, patrol, and maintain a lawn area using onboard sensors and smart pathing algorithms. It was designed as a capstone project for Rutgers University New Brunswick, ECE Department. 
+Designed as a capstone project for Rutgers University New Brunswick, ECE Department. GreenKeeper is a Raspberry Pi-powered autonomous lawn robot built with computer vision, real-time controls, and a simple GUI for state management. It’s designed to map, patrol, and maintain a lawn area using onboard sensors and smart pathing algorithms, while avoiding obstacles using models like yolov8n and MiDaS. 
 
 ---
 
@@ -17,19 +17,39 @@ GreenKeeper is a Raspberry Pi-powered autonomous lawn robot built with computer 
 
 ---
 
-## 🛠️ Setup
+## 🛠️ Hardware & Software Setup
 
-### Prerequisites
+### Hardware Used:
 
-- Raspberry Pi 5 (4GB or more)
-- Raspberry Pi Camera Module (IMX219 or similar)
-- Python 3.11+
+- Raspberry Pi 5 (4GB)
+- Raspberry Pi Active Cooling Module
+- Raspberry Pi Camera Module v2
+- 12v 9Ah SLA Battery
+- 12v -> 5v/5A DC/DC converter
+- Dual Brushed DC Motor Driver + 2 BDC Motors
+- Singular BLDC Motor Driver + 1 BLDC Motor (*note: ~1500 RPM Minimum)
+- Wheels (3-D Printed), Chasis, Assembly Parts, Wire
 - Pygame, OpenCV, PyTorch, YOLOv5, TensorFlow Lite, etc.
 - A virtual environment is recommended
 
 ### Installation
 
-1. Clone the repo:
+This repo is mostly for demonstration purposes, but if you wish to try using the software, these are the required dependancies (almost all can be pip installed easily): 
+- pygame, opencv, pytorch, ect.... 
+
+1. Create a Virtual Env & Activate it
+
+```bash
+python3 -m venv greenkeeper_project
+source greenkeeper_project/bin/activate
+```
+2. Install all required dependancies listed above (preferably with pip). Alternatively execute this command to install all dependancies:
+
+```bash
+magic command that installs them all here
+```
+
+3. Clone the repo:
 
 ```bash
 git clone https://github.com/yourusername/greenkeeper.git
