@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 import os
+import subprocess
+import atexit
 
 class LawnMowerMapping:
     def __init__(self, file_path, out_file_path, update_interval=1):
@@ -94,8 +96,32 @@ class LawnMowerMapping:
         plt.pause(self.update_interval)
 
 
+def cleanup():
+    print("Cleaning up... Terminating RTK process.")
+    rtk_process.terminate()
+    try:
+        rtk_process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        print("Force killing RTK process.")
+        rtk_process.kill()
+
+atexit.register(cleanup)
+
+
 if __name__ == "__main__":
-    lawn_mower_map = LawnMowerMapping('../assets/raw_gps.txt','../assets/maps/map1.txt', update_interval=0.1)
+    # Replace with your actual email
+    email = "ep647@rutgers.edu"
+
+    # Start rtk_coords.py with arguments
+    rtk_process = subprocess.Popen([
+        "python", "rtk_coords.py", 
+        "-u", email, 
+        "-p", "none", 
+        "rtk2go.com", 
+        "2101", 
+        "VIAM_BASE2"
+    ])
+
+
+    lawn_mower_map = LawnMowerMapping('../assets/raw_gps.txt','../assets/maps/map2.txt', update_interval=0.1)
     lawn_mower_map.read_gps_coordinates()
-
-

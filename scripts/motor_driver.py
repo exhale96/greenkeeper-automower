@@ -8,11 +8,8 @@ import numpy as np
 from picamera2 import Picamera2
 from computer_vision import process_frame
 from mapper import LawnMowerMapping
-
-imgsz = 640 # Declares
-pygame.init() #init pygame for arrow-key robot control
-screen = pygame.display.set_mode((imgsz,imgsz))  # Window size
-pygame.display.set_caption("Test Pygame Window")
+import subprocess
+import atexit
 
 '''
 # left motor
@@ -116,12 +113,32 @@ class MotorDriver:
         self.set_motor(0, 0)
         self.set_blade(0)
 
+def cleanup():
+    print("Cleaning up... Terminating RTK process.")
+    map_process.terminate()
+    try:
+        map_process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        print("Force killing RTK process.")
+        map_process.kill()
+
+atexit.register(cleanup)
+
+
+
 if __name__ == "__main__":
+    imgsz = 640 # Declares
+    pygame.init() #init pygame for arrow-key robot control
+    screen = pygame.display.set_mode((imgsz,imgsz))  # Window size
+    pygame.display.set_caption("Test Pygame Window")
+
     motor_driver = MotorDriver()
     speed = 0.3
     blade_speed = 0.3
-    lawn_mower_map = LawnMowerMapping('../assets/raw_gps.txt','../assets/maps/map1.txt', update_interval=0.1)
-    lawn_mower_map.read_gps_coordinates()
+    map_process = subprocess.Popen([
+        "python", "mapper.py"
+    ])
+
 
     ## RC Mode Control Loop ##
     while True:
