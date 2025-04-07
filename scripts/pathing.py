@@ -213,4 +213,3 @@ if __name__ == "__main__":
     robot = Pathing('./maps/lawn1.txt', 'output.txt')
     robot.test_grid_movement()
 """    
-
