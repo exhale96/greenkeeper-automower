@@ -48,5 +48,7 @@ cd greenkeeper
 ```bash
 pip install -r requirements.txt
 ```
+4. Install MiDaS into the environment by following the steps here: 
 
+- https://pytorch.org/hub/intelisl_midas_v2/
 
