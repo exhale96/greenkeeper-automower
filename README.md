@@ -34,8 +34,7 @@ Designed as a capstone project for Rutgers University New Brunswick, ECE Departm
 
 ### Installation
 
-This repo is mostly for demonstration purposes, but if you wish to try using the software, these are the required dependancies (almost all can be pip installed easily): 
-- pygame, opencv, pytorch, ect.... 
+This repo is mostly for demonstration purposes, but if you wish to try using the software for yourself here is how you can get it set up easily:
 
 1. Create a Virtual Env & Activate it
 
