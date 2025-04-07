@@ -5,7 +5,7 @@ import time
 from motor_driver import MotorDriver
 from shapely.geometry import Point, Polygon, LineString, MultiLineString
 from sklearn.decomposition import PCA
-
+import math
 
 class Pathing:
     def __init__(self, map_file, gps_file):
@@ -118,7 +118,7 @@ class Pathing:
                 if isinstance(clipped, LineString):
                     lines.append(list(clipped.coords))  # add the coordinates of the clipped line
                 elif isinstance(clipped, MultiLineString):
-                    for subline in clipped:
+                    for subline in clipped.geoms:
                         lines.append(list(subline.coords))
             x += step
             direction = not direction
@@ -133,19 +133,39 @@ class Pathing:
 
 
     def move_to_next_point(self, target_point):
-        pass
-    def reached_target(self):
-        pass
-    def calculate_motor_speeds(self, current_point, target_point):
-        pass
-    def correct_position(self):
-        pass
-    def calculate_distance(self, point1, point2):
-        pass
-    def follow_path(self):
-        pass
+        print(f"Moving towards target point: {target_point}")
+        self.move_forward()
 
-    def move_forward(self, duration = 0, speed=0.6):
+        while True:
+            current_point = self.get_current_gps()  # Get the current GPS position
+            if current_point is None:
+                continue
+            dist = self.calculate_distance(current_point, target_point)
+            print(f"Current position: {current_point}, Distance to target: {dist:.2f} meters")
+            if dist < 0.3:
+                self.motors.set_motor(0, 0)  # Stop the motors when close to the target
+                break
+            time.sleep(0.5)
+
+
+    def calculate_distance(self, point1, point2):
+        lat1, lon1 = point1[1], point1[0]
+        lat2, lon2 = point2[1], point2[0]
+        r = 6371000
+        phi1, phi2 = math.radians(lat1), math.radians(lat2)
+        dphi = math.radians(lat2 - lat1)
+        dlambda = math.radians(lon2 - lon1)
+        a = math.sin(dphi / 2)**2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2)**2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        return r * c
+    
+    def follow_path(self):
+        print("Starting to follow the zigzag path...")
+        for target_point in self.path:
+            self.move_to_next_point(target_point)  # Move towards the target point
+
+
+    def move_forward(self, duration = 0, speed=0.25):
         if duration > 0:
             self.motors.set_motor(speed, speed*0.93)
             time.sleep(duration)
@@ -162,12 +182,12 @@ class Pathing:
         else:
             self.motors.set_motor(-speed, -speed)
 
-    def turn_left(self, duration=1, speed=0.58):
+    def turn_left(self, duration=1, speed=0.48):
         self.motors.set_motor(0, speed)
         time.sleep(duration)
         self.motors.set_motor(0, 0)
 
-    def turn_right(self, duration=1, speed=0.55):
+    def turn_right(self, duration=1, speed=0.45):
         self.motors.set_motor(speed, 0)
         time.sleep(duration)
         self.motors.set_motor(0, 0)
