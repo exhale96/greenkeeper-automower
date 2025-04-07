@@ -26,13 +26,16 @@ DIR2_PIN = 5  # Direction control
 PWM3_PIN = 11
 FORW = 9
 REV = 10
-'''
 
 ENCODER_LEFT_A = 7  # GPIO pin for left motor encoder A
 ENCODER_LEFT_B = 8  # GPIO pin for left motor encoder B
 
 ENCODER_RIGHT_A = 23  # GPIO pin for right motor encoder A
 ENCODER_RIGHT_B = 24  # GPIO pin for right motor encoder B
+
+IMU_SDA = 2 # GPIO Pin for imu SDA
+IMU_SCL = 3 # GPUI Pin for imu SCL
+'''
 
 # IMU SETUP
 IMU = mpu6050.mpu6050(0x68)
@@ -56,20 +59,20 @@ class MotorDriver:
         self.forw = DigitalOutputDevice(9)  # Blade motor forward pin
         self.rev = DigitalOutputDevice(10)  # Blade motor reverse pin
 
-        # Setup
+        # imu setup
+        self.imu = mpu6050.mpu6050(0x68)
+        self.alpha = 0.98
+        self.yaw = 0.0
+        self.last_time = time.time()
 
-
-        self.last_clk_left = 0
-        self.last_clk_right = 0
-        self.counter = 0
         
     def read_encoder(self):
         ...
 
     def read_imu(self):
-        accelerometer_data = IMU.get_accel_data()
-        gyroscope_data = IMU.get_gyro_data()
-        temperature = IMU.get_temp()
+        accelerometer_data = self.imu.get_accel_data()
+        gyroscope_data = self.imu.get_gyro_data()
+        temperature = self.imu.get_temp()
         return accelerometer_data, gyroscope_data, temperature # Add additional returns here if needed (commented out above)
 
     def set_motor(self, left_speed, right_speed):
@@ -107,31 +110,6 @@ class MotorDriver:
         self.set_motor(0, 0)
         self.set_blade(0)
 
-class PIDController:
-    def __init__(self, kp, ki, kd):
-        self.kp = kp
-        self.ki = ki
-        self.kd = kd
-        self.previous_error = 0
-        self.integral = 0
-        self.last_time = time.time()
-
-    def compute(self, target_speed, actual_speed):
-        """Calculate the PID correction for motor speed."""
-        error = target_speed - actual_speed
-        current_time = time.time()
-        dt = current_time - self.last_time if current_time - self.last_time > 0 else 1e-6
-
-        self.integral += error * dt
-        derivative = (error - self.prev_error) / dt
-
-        output = (self.kp * error) + (self.ki * self.integral) + (self.kd * derivative)
-
-        self.prev_error = error
-        self.last_time = current_time
-
-        return output
-    
 if __name__ == "__main__":
     motor_driver = MotorDriver()
     speed = 0.3
