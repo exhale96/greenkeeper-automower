@@ -36,6 +36,10 @@ class LawnMowerMapping:
                                 print("Received GPS data")
                                 print(parts)
                                 lon, lat = self.nmea_to_decimal(parts[2], parts[3], parts[4], parts[5])
+                                # check if lon and lat are not empty 
+                                if lon == '' or lat == '':
+                                    print("Invalid GPS data received.")
+                                    continue
                                 print(f"Latitude: {lat}, Longitude: {lon}")
                                 self.path.append((lon, lat))
                                 self.latitudes.append(lat)
