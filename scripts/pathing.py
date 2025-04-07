@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 from motor_driver import MotorDriver
-from shapely.geometry import Polygon, LineString, MultiLineString
+from shapely.geometry import Point, Polygon, LineString, MultiLineString
 from sklearn.decomposition import PCA
 
 
@@ -24,8 +24,11 @@ class Pathing:
         # position will be of the form (lon, lat)
         self.current_position = self.get_current_gps()
 
+        self.boundary_polygon = Polygon(self.boundary)
+
         # Create zigzag path based on the loaded boundary
         self.path = self.generate_zigzag_path()
+
 
     def load_map_data(self, map_file):
         # map_file contains all lon,lat points
@@ -68,23 +71,8 @@ class Pathing:
         return round(lon_conv, 7), round(lat_conv, 7)
             
     def is_inside_boundary(self, point):
-        x, y = point
-        poly = self.boundary
-        n = len(poly)
-        inside = False
-        p1x, p1y = poly[0]
-        for i in range(n + 1):
-            p2x, p2y = poly[i % n]
-            if y > min(p1y, p2y):
-                if y <= max(p1y, p2y):
-                    if x <= max(p1x, p2x):
-                        if p1y != p2y:
-                            xinters = (y - p1y) * (p2x - p1x) / (p2y - p1y + 1e-10) + p1x
-                        if p1x == p2x or x <= xinters:
-                            inside = not inside
-            p1x, p1y = p2x, p2y
+        return self.boundary_polygon.contains(Point(point)) or self.boundary_polygon.touches(Point(point))
 
-        return inside
 
     def generate_zigzag_path(self, spacing_meters=0.5):
         if not self.boundary:
