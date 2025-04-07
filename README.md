@@ -2,8 +2,6 @@
 
 Designed as a capstone project for Rutgers University New Brunswick, ECE Department. GreenKeeper is a Raspberry Pi-powered autonomous lawn robot built with computer vision, real-time controls, and a simple GUI for state management. It’s designed to map, patrol, and maintain a lawn area using onboard sensors and smart pathing algorithms, while avoiding obstacles using models like yolov8n and MiDaS. 
 
----
-
 ## 📸 Features
 
 - Autonomous and remote control modes
@@ -14,8 +12,6 @@ Designed as a capstone project for Rutgers University New Brunswick, ECE Departm
 - TensorFlow and PyTorch model compatibility
 - Works on Raspberry Pi 5 with camera input
 - Modular architecture for easy extension
-
----
 
 ## 🛠️ Hardware & Software Setup
 
@@ -29,8 +25,6 @@ Designed as a capstone project for Rutgers University New Brunswick, ECE Departm
 - Dual Brushed DC Motor Driver + 2 BDC Motors
 - Singular BLDC Motor Driver + 1 BLDC Motor (*note: ~1500 RPM Minimum)
 - Wheels (3-D Printed), Chasis, Assembly Parts, Wire
-- Pygame, OpenCV, PyTorch, YOLOv5, TensorFlow Lite, etc.
-- A virtual environment is recommended
 
 ### Installation
 
