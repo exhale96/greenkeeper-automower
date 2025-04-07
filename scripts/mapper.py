@@ -100,6 +100,5 @@ class LawnMowerMapping:
                 print("Paused" if self.paused else "Resumed")
 
 if __name__ == "__main__":
-    curr_path = os.path.dirname(os.path.realpath(__file__))
-    lawn_mower_map = LawnMowerMapping('output.txt','./maps/map1.txt', update_interval=0.1)
+    lawn_mower_map = LawnMowerMapping('../assets/raw_gps.txt','../assets/maps/map1.txt', update_interval=0.1)
     lawn_mower_map.read_gps_coordinates()
