@@ -1,4 +1,4 @@
-import gps_mapper
+import mapper
 import numpy as np
 import matplotlib.pyplot as plt
 import time
