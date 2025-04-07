@@ -1,0 +1,62 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+
+# OS / Editor / IDE files
+.DS_Store
+*.swp
+*.swo
+*.bak
+*.tmp
+*.log
+*.orig
+*.sqlite3
+
+# VSCode / Thonny
+.vscode/
+.thonny/
+
+# Python-specific
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Jupyter notebooks (if any)
+.ipynb_checkpoints/
+
+# Media files (if generated for logging or camera testing)
+# *.avi
+# *.mp4
+# *.jpg
+# *.png
+# *.npy
+
+# Torch / YOLOv5 or model cache
+runs/
+
+
+# libcamera / picamera cache (if applicable)
+~/.cache/torch/
+~/.cache/libcamera/
+
+# System logs / camera logs
+*.log
+*.out
+*.pid
+
+# Misc
+*.pyo
+*.so
+*.zip
+
+# Local settings or testing
+config.json
+secrets.json

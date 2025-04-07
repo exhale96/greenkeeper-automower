@@ -1,0 +1,200 @@
+from gpiozero import PWMOutputDevice, DigitalOutputDevice
+import time
+import sys
+import mpu6050
+import pygame
+import cv2
+import numpy as np
+from picamera2 import Picamera2
+from computer_vision import process_frame
+
+imgsz = 640 # Declares
+pygame.init() #init pygame for arrow-key robot control
+screen = pygame.display.set_mode((imgsz,imgsz))  # Window size
+pygame.display.set_caption("Test Pygame Window")
+
+'''
+# left motor
+PWM1_PIN = 21  # Hardware PWM for speed
+DIR1_PIN = 20  # Direction control
+
+# right motor
+PWM2_PIN = 6  # Hardware PWM for speed
+DIR2_PIN = 5  # Direction control
+
+# Blade motor
+PWM3_PIN = 11
+FORW = 9
+REV = 10
+'''
+
+ENCODER_LEFT_A = 7  # GPIO pin for left motor encoder A
+ENCODER_LEFT_B = 8  # GPIO pin for left motor encoder B
+
+ENCODER_RIGHT_A = 23  # GPIO pin for right motor encoder A
+ENCODER_RIGHT_B = 24  # GPIO pin for right motor encoder B
+
+# IMU SETUP
+IMU = mpu6050.mpu6050(0x68)
+IMU_SDA = 2 # GPIO Pin for imu SDA
+IMU_SCL = 3 # GPUI Pin for imu SCL
+alpha = 0.98
+yaw = 0.0
+last_time = time.time()
+
+class MotorDriver:
+
+    def __init__(self):
+
+        self.pwm_left = PWMOutputDevice(21)  # Left motor PWM pin
+        self.dir_left = DigitalOutputDevice(20)  # Left motor direction pin
+
+        self.pwm_right = PWMOutputDevice(6)  # Right motor PWM pin
+        self.dir_right = DigitalOutputDevice(5)  # Right motor direction pin
+
+        self.pwm_blade = PWMOutputDevice(11)  # Blade motor PWM pin
+        self.forw = DigitalOutputDevice(9)  # Blade motor forward pin
+        self.rev = DigitalOutputDevice(10)  # Blade motor reverse pin
+
+        # Setup
+
+
+        self.last_clk_left = 0
+        self.last_clk_right = 0
+        self.counter = 0
+        
+    def read_encoder(self):
+        ...
+
+    def read_imu(self):
+        accelerometer_data = IMU.get_accel_data()
+        gyroscope_data = IMU.get_gyro_data()
+        temperature = IMU.get_temp()
+        return accelerometer_data, gyroscope_data, temperature # Add additional returns here if needed (commented out above)
+
+    def set_motor(self, left_speed, right_speed):
+        """
+        Sets the speed and direction of the left and right motors.
+        :param left_speed: Speed from -1 (full reverse) to 1 (full forward).
+        :param right_speed: Speed from -1 (full reverse) to 1 (full forward).
+        """
+        self.dir_left.on() if left_speed > 0 else self.dir_left.off()
+        self.pwm_left.value = abs(left_speed)
+
+        self.dir_right.on() if right_speed > 0 else self.dir_right.off()
+        self.pwm_right.value = abs(right_speed)
+        
+    def set_blade(self, blade_speed):
+        """
+        Controls the blade motor speed and direction.
+        :param blade_speed: Speed from -1 (full reverse) to 1 (full forward).
+        """
+        if blade_speed > 0:
+            self.forw.on()
+            self.rev.off()
+            self.pwm_blade.value = abs(blade_speed)
+        elif blade_speed < 0:
+            self.forw.off()
+            self.rev.on()
+            self.pwm_blade.value = abs(blade_speed)
+        else:
+            self.forw.off()
+            self.rev.off()
+            self.pwm_blade.value = 0
+
+    def stop_motors(self):
+        '''Stop all motors'''
+        self.set_motor(0, 0)
+        self.set_blade(0)
+
+class PIDController:
+    def __init__(self, kp, ki, kd):
+        self.kp = kp
+        self.ki = ki
+        self.kd = kd
+        self.previous_error = 0
+        self.integral = 0
+        self.last_time = time.time()
+
+    def compute(self, target_speed, actual_speed):
+        """Calculate the PID correction for motor speed."""
+        error = target_speed - actual_speed
+        current_time = time.time()
+        dt = current_time - self.last_time if current_time - self.last_time > 0 else 1e-6
+
+        self.integral += error * dt
+        derivative = (error - self.prev_error) / dt
+
+        output = (self.kp * error) + (self.ki * self.integral) + (self.kd * derivative)
+
+        self.prev_error = error
+        self.last_time = current_time
+
+        return output
+    
+if __name__ == "__main__":
+    motor_driver = MotorDriver()
+    speed = 0.3
+    blade_speed = 0.3
+
+    ## RC Mode Control Loop ##
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                motor_driver.stop_motors()
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    print("Up Arrow Pressed: Move Forward")
+                    motor_driver.set_motor(speed, speed)
+                elif event.key == pygame.K_DOWN:
+                    print("Down Arrow Pressed: Move Backward")
+                    motor_driver.set_motor(-speed, -speed)
+                elif event.key == pygame.K_LEFT:
+                    print("Left Arrow Pressed: Turn Left")
+                    motor_driver.set_motor(-speed, speed)
+                elif event.key == pygame.K_RIGHT:
+                    print("Right Arrow Pressed: Turn Right")
+                    motor_driver.set_motor(speed, -speed)
+                elif event.key == pygame.K_0:
+                    motor_driver.set_blade(blade_speed)
+                    print("0 pressed: Activating Blade Motor")
+                elif event.key == pygame.K_ESCAPE:
+                    motor_driver.stop_motors()
+                    pygame.quit()
+                    sys.exit()
+
+            elif event.type == pygame.KEYUP:
+                if event.key in [pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT,pygame.K_0]:
+                    print("Key Released: Stop Motors")
+                    motor_driver.stop_motors()
+
+        ##          ##
+        annotated_frame, fps = process_frame()
+        frame_rotated = np.rot90(annotated_frame, k=-1)
+        frame_flipped = cv2.flip(frame_rotated, 1)
+        frame_surface = pygame.surfarray.make_surface(frame_flipped)
+        screen.blit(frame_surface, (0, 0))
+
+        ## Display FPS in PyGame ##
+        font = pygame.font.Font(None, 36)
+        fps_text = font.render(f"FPS: {fps:.1f}", True, (255, 255, 255))
+        screen.blit(fps_text, (10, 10))
+
+        ## IMU Reading ##
+        a, g, t = motor_driver.read_imu()
+        current_time = time.time()
+        dt = current_time - last_time
+        last_time = current_time
+        yaw += g['z']*dt
+        yaw_text = font.render(f"Yaw: {yaw:.2f} degrees", True, (255, 255, 0))
+        print(yaw_text)
+        screen.blit(yaw_text, (252, 610))
+
+
+        pygame.display.flip() # Update the Display ws
+        pygame.time.delay(10) # Delay to limit CPU Usage
+
+
+        
