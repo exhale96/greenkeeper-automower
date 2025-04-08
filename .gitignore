@@ -61,3 +61,4 @@ runs/
 # Local settings or testing
 config.json
 secrets.json
+raw_gps.txt
