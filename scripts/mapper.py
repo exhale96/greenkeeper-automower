@@ -111,7 +111,7 @@ atexit.register(cleanup)
 
 if __name__ == "__main__":
     # Replace with your actual email
-    email = "ep647@rutgers.edu"
+    email = "irc16@scarletmail.rutgers.edu"
 
     # Start rtk_coords.py with arguments
     rtk_process = subprocess.Popen([
@@ -124,5 +124,5 @@ if __name__ == "__main__":
     ])
 
 
-    lawn_mower_map = LawnMowerMapping('../assets/raw_gps.txt','../assets/maps/map2.txt', update_interval=0.1)
+    lawn_mower_map = LawnMowerMapping('../assets/raw_gps.txt','../assets/maps/map4.txt', update_interval=0.1)
     lawn_mower_map.read_gps_coordinates()
