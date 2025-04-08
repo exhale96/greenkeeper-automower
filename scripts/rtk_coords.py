@@ -291,7 +291,7 @@ if __name__ == '__main__':
     parser.add_option("-2", "--V2", action="store_true", dest="V2", default=False, help="Make a NTRIP V2 Connection")
     parser.add_option("-f", "--outputFile", type="string", dest="outputFile", default=None, help="Write to this file, instead of stdout")
     parser.add_option("-m", "--maxtime", type="int", dest="maxConnectTime", default=None, help="Maximum length of the connection, in seconds")
-
+    
     parser.add_option("--Header", action="store_true", dest="headerOutput", default=False, help="Write headers to stderr")
     parser.add_option("--HeaderFile", type="string", dest="headerFile", default=None, help="Write headers to this file, instead of stderr.")
     (options, args) = parser.parse_args()
