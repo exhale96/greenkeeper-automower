@@ -134,12 +134,49 @@ class Pathing:
 
     def move_to_next_point(self, target_point):
         print(f"Moving towards target point: {target_point}")
+        align_theshold = 10 # degrees
+        dist_threshold = 0.2 # meters
+
+        previous_point = None
+
+
         self.move_forward()
 
         while True:
-            current_point = self.get_current_gps()  # Get the current GPS position
+            current_point = self.get_current_gps()
             if current_point is None:
                 continue
+            if previous_point is None:
+                previous_point = current_point
+                continue
+            
+            current_heading = self.calculate_bearing(previous_point, current_point)
+            target_heading = self.calculate_bearing(current_point, target_point)
+            heading_diff = self.normalize_angle(target_heading - current_heading)
+            print(f"Heading: current {current_heading:.1f}°, target {target_heading:.1f}°, diff {heading_diff:.1f}°")
+
+            # turn if needed
+            if abs(heading_diff) > align_theshold:
+                if heading_diff > 0:
+                    # turn right
+                    self.turn_right(duration=0.4)
+                else:
+                    self.turn_left(duration=0.4)
+            else:
+                self.move_forward()
+                while True:
+                    current_point = self.get_current_gps()
+                    if current_point is None:
+                        continue
+                    dist = self.calculate_distance(current_point, target_point)
+                    print(f"Current distance to target: {dist:.2f} meters")
+                    if dist < dist_threshold:
+                        self.motors.set_motor(0,0)
+                        print("Arrived at target.")
+                        return
+                    time.sleep(0.5)
+            
+
             dist = self.calculate_distance(current_point, target_point)
             print(f"Current position: {current_point}, Distance to target: {dist:.2f} meters")
             if dist < 0.3:
@@ -147,7 +184,19 @@ class Pathing:
                 break
             time.sleep(0.5)
 
+    def calculate_bearing(self, point1, point2):
+        lon1, lat1 = map(math.radians, point1)
+        lon2, lat2 = map(math.radians, point2)
+        dlon = lon2 - lon1
+        x = math.sin(dlon) * math.cos(lat2)
+        y = math.cos(lat1) * math.sin(lat2) - (math.sin(lat1) * math.cos(lat2) * math.cos(dlon))
+        bearing = math.degrees(math.atan2(x, y))
+        return (bearing + 360) % 360    # degree is from 0 to 360
 
+    def normalize_angle(self, angle):
+        angle = (angle + 180) % 360 - 180
+        return angle
+    
     def calculate_distance(self, point1, point2):
         lat1, lon1 = point1[1], point1[0]
         lat2, lon2 = point2[1], point2[0]
@@ -165,7 +214,7 @@ class Pathing:
             self.move_to_next_point(target_point)  # Move towards the target point
 
 
-    def move_forward(self, duration = 0, speed=0.25):
+    def move_forward(self, duration = 0, speed=0.45):
         if duration > 0:
             self.motors.set_motor(speed, speed*0.93)
             time.sleep(duration)

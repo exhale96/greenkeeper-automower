@@ -10,18 +10,26 @@ import time
 pygame.init()
 
 # Set up display
-WIDTH, HEIGHT = 640, 480
+WIDTH, HEIGHT = 640, 640
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("GreenKeeper Menu")
 
-# Colors
+# Colors & Font
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GRAY = (169, 169, 169)
 BLUE = (0, 0, 255)
-
-# Font for text
 font = pygame.font.Font(None, 48)
+
+# States
+STATE_MENU = "menu"
+STATE_RC = "rc_mode"
+STATE_MAPPING = "mapping"
+STATE_SENTRY = "sentry"
+STATE_PATHING = "pathing"
+STATE_QUIT = "quit"
+current_state = STATE_MENU
+
 
 # Menu button class
 class Button:
@@ -47,7 +55,7 @@ class Button:
 
 # Create buttons for the menu
 button_rc = Button("RC Mode", 200, 100, 240, 50, GRAY)
-button_idle = Button("Idle Mode", 200, 170, 240, 50, GRAY)
+button_mapping = Button("Mapping", 200, 170, 240, 50, GRAY)
 button_sentry = Button("Sentry Mode", 200, 240, 240, 50, GRAY)
 button_pathing = Button("Pathing Mode", 200, 310, 240, 50, GRAY)
 button_quit = Button("QUIT", 200, 380, 240, 50, (255, 0, 0)) 
@@ -59,14 +67,12 @@ def draw_menu_screen():
 
     # Draw buttons
     button_rc.draw(screen)
-    button_idle.draw(screen)
+    button_mapping.draw(screen)
     button_sentry.draw(screen)
     button_pathing.draw(screen)
     button_quit.draw(screen)
 
     # Update the display
-    pygame.display.flip()
-
     pygame.display.flip()
 
 def sentry_mode():
@@ -80,7 +86,9 @@ def pathing_mode():
     print("Pathing Mode activated!")  # Placeholder
     pygame.time.wait(1000)
 
-
+def mapping_mode():
+    ...
+    
 def rc_mode():
     motor_driver = MotorDriver()  # Initialize the motor driver
     cap = cv2.VideoCapture(0)  # Open the camera
@@ -126,8 +134,10 @@ def rc_mode():
     pygame.quit()
     sys.exit()
 
+
 # Menu function to transition to RC mode
 def run_menu():
+
     running = True
     while running:
         for event in pygame.event.get():
@@ -144,9 +154,10 @@ def run_menu():
             running = False  # Stop the menu loop and go to RC mode
             rc_mode()  # Call RC mode function
 
-        elif button_idle.is_clicked(mouse_pos, mouse_click):
+        elif button_mapping.is_clicked(mouse_pos, mouse_click):
             print("Idle Mode Selected")
             pygame.time.wait(1000)  # Just a placeholder
+            mapping_mode()
 
         elif button_sentry.is_clicked(mouse_pos, mouse_click):
             sentry_mode()
@@ -166,4 +177,19 @@ def run_menu():
     pygame.quit()
     sys.exit()
 if __name__ == "__main__":
+    while current_state != STATE_QUIT:
+        if current_state == STATE_MENU:
+            current_state = run_menu()
+
+        elif current_state == STATE_RC:
+            current_state = rc_mode()
+
+        elif current_state == STATE_MAPPING:
+            current_state = mapping_mode()
+
+        elif current_state == STATE_SENTRY:
+            current_state = sentry_mode()
+
+        elif current_state == STATE_PATHING:
+            current_state = pathing_mode()
     run_menu()

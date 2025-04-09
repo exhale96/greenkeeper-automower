@@ -5,6 +5,7 @@ import os
 import subprocess
 import atexit
 from datetime import datetime
+import threading
 
 class LawnMowerMapping:
     def __init__(self, file_path, out_file_path, update_interval=1):
@@ -96,33 +97,42 @@ class LawnMowerMapping:
         plt.draw()
         plt.pause(self.update_interval)
 
+def launch_rtk_loop():
+    global rtk_process
+    email = "irc16@scarletmail.rutgers.edu"
+    while True:
+        print("Launching RTK process...")
+        rtk_process = subprocess.Popen([
+            "python", "rtk_coords.py", 
+            "-u", email, 
+            "-p", "none", 
+            "rtk2go.com", 
+            "2101", 
+            "VIAM_BASE2"
+        ])
+        rtk_process.wait()  # Wait for it to exit
+        print("RTK process exited. Restarting in 5 seconds...")
+        time.sleep(5)  # Wait a bit before restarting
+
 
 def cleanup():
-    print("Cleaning up... Terminating RTK process.")
-    rtk_process.terminate()
+    print("Cleaning up... Terminating RTK process (if running).")
     try:
-        rtk_process.wait(timeout=5)
-    except subprocess.TimeoutExpired:
-        print("Force killing RTK process.")
-        rtk_process.kill()
+        if rtk_process.poll() is None:
+            rtk_process.terminate()
+            rtk_process.wait(timeout=5)
+            print("RTK process terminated cleanly.")
+    except Exception as e:
+        print(f"Could not terminate RTK process: {e}")
+
 
 atexit.register(cleanup)
 
 
 if __name__ == "__main__":
-    # Replace with your actual email
-    email = "irc16@scarletmail.rutgers.edu"
-
-    # Start rtk_coords.py with arguments
-    rtk_process = subprocess.Popen([
-        "python", "rtk_coords.py", 
-        "-u", email, 
-        "-p", "none", 
-        "rtk2go.com", 
-        "2101", 
-        "VIAM_BASE2"
-    ])
+    rtk_thread = threading.Thread(target=launch_rtk_loop, daemon=True)
+    rtk_thread.start()
 
 
-    lawn_mower_map = LawnMowerMapping('../assets/raw_gps.txt','../assets/maps/map4.txt', update_interval=0.1)
+    lawn_mower_map = LawnMowerMapping('../assets/raw_gps.txt','../assets/maps/map1.txt', update_interval=0.05)
     lawn_mower_map.read_gps_coordinates()

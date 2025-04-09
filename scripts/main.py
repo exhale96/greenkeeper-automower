@@ -13,8 +13,10 @@ def main():
 
     # Create the menu and add buttons
     menu = run_menu()
-    menu.add_button(Button("Start RC Mode", 100, 100, 400, 50, action="start_rc_mode"))
-    menu.add_button(Button("Start Mapping", 100, 200, 400, 50, action="start_mapping"))
+    menu.add_button(Button("RC-Mode", 100, 100, 400, 50, action="start_rc_mode"))
+    menu.add_button(Button("Mapping-Mode", 100, 200, 400, 50, action="start_mapping"))
+    menu.add_botton(Button("Pathing", 100, 300, 400, 50, action="start_pathing"))
+    menu.add_button(Button("Sentry-Mode"), )
 
     running = True
     while running:

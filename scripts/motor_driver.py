@@ -10,6 +10,7 @@ from computer_vision import process_frame
 from mapper import LawnMowerMapping
 import subprocess
 import atexit
+import threading
 
 '''
 # left motor
@@ -59,14 +60,21 @@ class MotorDriver:
         self.rev = DigitalOutputDevice(10)  # Blade motor reverse pin
 
         # imu setup
-        self.imu = mpu6050.mpu6050(0x68)
+        """self.imu = mpu6050.mpu6050(0x68)
         self.alpha = 0.98
         self.yaw = 0.0
         self.last_time = time.time()
-
+        self.gyro_bias_z = 0
+        self.calibrate_gyro()
+"""
         
-    def read_encoder(self):
-        ...
+
+    def calibrate_gyro(self, samples=100):
+        bias = 0
+        for _ in range(samples):
+            bias += self.imu.get_gyro_data()['z']
+            time.sleep(0.01)  # adjust based on your loop speed
+        self.gyro_bias_z = bias / samples
 
     def read_imu(self):
         accelerometer_data = self.imu.get_accel_data()
@@ -75,7 +83,8 @@ class MotorDriver:
         current_time = time.time()
         dt = current_time - self.last_time
         self.last_time = current_time
-        self.yaw += gyroscope_data['z']*dt
+        corrected_gyro_z = gyroscope_data['z'] - self.gyro_bias_z
+        self.yaw += corrected_gyro_z*dt
         return self.yaw
 
     def set_motor(self, left_speed, right_speed):
@@ -113,16 +122,49 @@ class MotorDriver:
         self.set_motor(0, 0)
         self.set_blade(0)
 
+# def cleanup():
+#     print("Cleaning up... Terminating RTK process.")
+#     map_process.terminate()
+#     try:
+#         map_process.wait(timeout=5)
+#     except subprocess.TimeoutExpired:
+#         print("Force killing RTK process.")
+#         map_process.kill()
+
+# atexit.register(cleanup)
+
+def launch_rtk_loop():
+    global mapper_process
+
+    while True:
+        print("Launching mapper process...")
+        mapper_process = subprocess.Popen([
+            "python", "mapper.py"
+        ])
+        mapper_process.wait()  # Wait for it to exit
+        print("RTK process exited. Restarting in 5 seconds...")
+        time.sleep(5)  # Wait a bit before restarting
+
+
 def cleanup():
-    print("Cleaning up... Terminating RTK process.")
-    map_process.terminate()
+    print("Cleaning up... Terminating RTK process (if running).")
     try:
-        map_process.wait(timeout=5)
-    except subprocess.TimeoutExpired:
-        print("Force killing RTK process.")
-        map_process.kill()
+        if mapper_process.poll() is None:
+            mapper_process.terminate()
+            mapper_process.wait(timeout=5)
+            print("RTK process terminated cleanly.")
+    except Exception as e:
+        print(f"Could not terminate RTK process: {e}")
+
 
 atexit.register(cleanup)
+
+
+if __name__ == "__main__":
+    rtk_thread = threading.Thread(target=launch_rtk_loop, daemon=True)
+    rtk_thread.start()
+
+
 
 
 
@@ -133,11 +175,12 @@ if __name__ == "__main__":
     pygame.display.set_caption("Test Pygame Window")
 
     motor_driver = MotorDriver()
-    speed = 0.3
+    speed = 0.5
     blade_speed = 0.3
-    map_process = subprocess.Popen([
-        "python", "mapper.py"
-    ])
+
+    rtk_thread = threading.Thread(target=launch_rtk_loop, daemon=True)
+    rtk_thread.start()
+
 
 
     ## RC Mode Control Loop ##
@@ -151,16 +194,16 @@ if __name__ == "__main__":
                 if event.key == pygame.K_UP:
                     print("Up Arrow Pressed: Move Forward")
                     print("Speed: ", speed)
-                    motor_driver.set_motor(-speed, -speed)
+                    motor_driver.set_motor(-speed, -speed*0.93)
                 elif event.key == pygame.K_DOWN:
                     print("Down Arrow Pressed: Move Backward")
                     motor_driver.set_motor(speed, speed)
                 elif event.key == pygame.K_LEFT:
                     print("Left Arrow Pressed: Turn Left")
-                    motor_driver.set_motor(-speed, speed)
+                    motor_driver.set_motor(0, speed)
                 elif event.key == pygame.K_RIGHT:
                     print("Right Arrow Pressed: Turn Right")
-                    motor_driver.set_motor(speed, -speed)
+                    motor_driver.set_motor(speed, 0)
                 elif event.key == pygame.K_0:
                     motor_driver.set_blade(blade_speed)
                     print("0 pressed: Activating Blade Motor")
@@ -187,7 +230,7 @@ if __name__ == "__main__":
         screen.blit(fps_text, (10, 10))
 
         ## IMU Reading ##
-        yaw = motor_driver.read_imu()
+        # yaw = motor_driver.read_imu()
 
         """
         current_time = time.time()
@@ -196,9 +239,9 @@ if __name__ == "__main__":
         yaw += g['z']*dt"""
 
         
-        yaw_text = font.render(f"Yaw: {yaw:.2f} degrees", True, (255, 255, 0))
-        print(yaw_text)
-        screen.blit(yaw_text, (252, 610))
+        # yaw_text = font.render(f"Yaw: {yaw:.2f} degrees", True, (255, 255, 0))
+        # print(yaw_text)
+        # screen.blit(yaw_text, (252, 610))
 
 
         pygame.display.flip() # Update the Display ws
