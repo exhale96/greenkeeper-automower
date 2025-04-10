@@ -65,6 +65,8 @@ button_pathing = Button("Pathing Mode", 200, 310, 240, 50, PINK)
 button_quit = Button("QUIT", 400, 590, 240, 50, (255, 0, 0), YELLOW) 
 button_increase_speed = Button("+", 70, 490, 40, 40, PINK)  # Increase button
 button_decrease_speed = Button("-", 30, 490, 40, 40, PINK) # 
+button_currently_mapping = Button("Currently Mapping", 200, 240, 290, 50, PINK)
+button_back = Button("<- Esc", 0, 0, 100, 50, YELLOW, GREEN1)
 
 def draw_menu_screen():
     screen.fill(GREEN1)  # Fill the background with (COLOR)
@@ -99,6 +101,7 @@ def sentry_mode():
 
         # Process Frame with CV
         annotated_frame, fps = process_frame_with_midas(camera_manager.picam2)
+        fps = fps/2
         frame_rotated = np.rot90(annotated_frame, k=-1)
         frame_flipped = cv2.flip(frame_rotated, 1)
         frame_surface = pygame.surfarray.make_surface(frame_flipped)
@@ -114,12 +117,32 @@ def sentry_mode():
     camera_manager.stop_camera()
 
 def pathing_mode():
-    print("Pathing Mode activated!")  # Placeholder
-    pygame.time.wait(1000)
 
+    ## Setup ##
+    screen.fill(GREEN1)  # Clears the screen with the background color
+
+    ## Main Loop ##
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    running = False  # Exit the pathing mode and return to the menu
+        
+
+        # Draw or update any display related to pathing mode here
+        button_quit.draw(screen)
+
+        pygame.display.flip()
+        pygame.time.delay(50)  # To avoid consuming too many resources
+
+    return STATE_MENU
 def mapping_mode():
 
     ## Setup ##
+    screen.fill(GREEN1)  # Clears the screen with the background color
     rtk_thread = threading.Thread(target=launch_rtk_loop, daemon=True)
     rtk_thread.start()
     motor_driver = MotorDriver()
@@ -163,17 +186,21 @@ def mapping_mode():
                 elif button_decrease_speed.is_clicked(mouse_pos, True):
                     speed = max(speed - 0.1, 0.1)
                     print("Speed Decreased!")
+        
+        ## Update GUI ##
+        button_currently_mapping.draw(screen)
 
+        ## Update Display (last) ##
+        pygame.display.flip()
     ## Exit Process ##                 
-    camera_manager.stop_camera()
+    cleanup()
     atexit.register(cleanup)
     return STATE_MENU
     
 def rc_mode():
     ## Function Setup ##
     motor_driver = MotorDriver()
-    speed = 0.5
-    font = pygame.font.Font(None, 36)
+    speed = 0.3
     controls_font = pygame.font.Font(None, 28)
     control_panel_width = 210# Width of the control panel
     control_panel_height = 180# Height of the control panel
@@ -193,21 +220,22 @@ def rc_mode():
                     running = False
                 elif event.key == pygame.K_UP:
                     print("Up Arrow Pressed: Move Forward")
-                    MotorDriver.set_motor(speed, speed)
+                    print(speed)
+                    motor_driver.set_motor(-speed, -speed)
                 elif event.key == pygame.K_DOWN:
                     print("Down Arrow Pressed: Move Backward")
-                    MotorDriver.set_motor(-speed, -speed)
+                    motor_driver.set_motor(speed, speed)
                 elif event.key == pygame.K_LEFT:
                     print("Left Arrow Pressed: Turn Left")
-                    MotorDriver.set_motor(-speed, speed)
+                    motor_driver.set_motor(-speed, speed)
                 elif event.key == pygame.K_RIGHT:
                     print("Right Arrow Pressed: Turn Right")
-                    MotorDriver.set_motor(speed, -speed)
+                    motor_driver.set_motor(speed, -speed)
                 elif event.key == pygame.K_0:
                     print("0 pressed: Activating Blade Motor")
-                    MotorDriver.set_blade(0.3)
+                    motor_driver.set_blade(0.2)
             elif event.type == pygame.KEYUP:
-                if event.key in [pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT]:
+                if event.key in [pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_0]:
                     print("Key Released: Stop Motors")
                     motor_driver.stop_motors()
             elif event.type == pygame.MOUSEBUTTONDOWN:
@@ -235,26 +263,13 @@ def rc_mode():
         ]
         button_decrease_speed.draw(screen)
         button_increase_speed.draw(screen)
+        button_back.draw(screen)
 
         y_offset = 10  # Starting offset for text drawing (within the background)
         for line in controls_text:
             control_line = controls_font.render(line, True, (255, 255, 255))
             screen.blit(control_line, (30, 540 + y_offset))  # Adjust position within the panel
             y_offset += 30  # Move down for the next line
-
-        ## Keyboard Controls ## 
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_UP]:
-            motor_driver.set_motor(1, 1)
-        elif keys[pygame.K_DOWN]:
-            motor_driver.set_motor(-1, -1)
-        elif keys[pygame.K_LEFT]:
-            motor_driver.set_motor(-1, 1)
-        elif keys[pygame.K_RIGHT]:
-            motor_driver.set_motor(1, -1)
-        else:
-            motor_driver.stop_motors()
-
         
         ## Update Display (last) ##
         pygame.display.flip()
@@ -280,8 +295,7 @@ def run_menu():
             return STATE_RC
         
         elif button_mapping.is_clicked(mouse_pos, mouse_click):
-            print("Idle Mode Selected")
-            pygame.time.wait(1000)  # Just a placeholder
+            print("Mapping Selected")
             return STATE_MAPPING
 
         elif button_sentry.is_clicked(mouse_pos, mouse_click):
@@ -292,6 +306,7 @@ def run_menu():
 
 
         elif button_pathing.is_clicked(mouse_pos, mouse_click):
+            print("Pathing Mode Selected")
             return STATE_PATHING
 
         elif button_quit.is_clicked(mouse_pos, mouse_click):
