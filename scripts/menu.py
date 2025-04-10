@@ -85,6 +85,11 @@ def draw_menu_screen():
 def sentry_mode():
 
     print("Sentry Mode activated!")
+    control_panel_width = 100# Width of the control panel
+    control_panel_height = 30# Height of the control panel
+    control_panel_surface = pygame.Surface((control_panel_width, control_panel_height))
+    control_panel_surface.set_alpha(150)  # Set transparency (0-255, where 255 is fully opaque)
+    control_panel_surface.fill((0, 0, 0))  # Fill with black color
 
     # Main loop
     running = True
@@ -106,11 +111,15 @@ def sentry_mode():
         frame_flipped = cv2.flip(frame_rotated, 1)
         frame_surface = pygame.surfarray.make_surface(frame_flipped)
         screen.blit(frame_surface, (0, 0))
+        
 
         ## Display FPS in PyGame ##
+        button_back.draw(screen)
+        screen.blit(control_panel_surface, (550, 0))
         font = pygame.font.Font(None, 36)
         fps_text = font.render(f"FPS: {fps:.1f}", True, (255, 255, 255))
-        screen.blit(fps_text, (10, 10))
+        screen.blit(fps_text, (550, 0))
+      # Position of the control panel
         pygame.display.flip()
 
     # Cleanup
@@ -189,6 +198,7 @@ def mapping_mode():
         
         ## Update GUI ##
         button_currently_mapping.draw(screen)
+        button_back.draw(screen)
 
         ## Update Display (last) ##
         pygame.display.flip()

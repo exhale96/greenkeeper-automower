@@ -18,7 +18,7 @@ class CameraManager:
             self.picam2.preview_configuration.align()
             self.picam2.configure("preview")
             self.picam2.start()
-            print("Camera initialized!!!! BITCH")
+            print("Camera initialized!")
 
     def stop_camera(self):
         """Stop the camera if it's running."""
