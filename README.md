@@ -39,7 +39,7 @@ source greenkeeper_project/bin/activate
 2. Clone the repo:
 
 ```bash
-git clone https://github.com/yourusername/greenkeeper.git
+git clone https://github.com/exhale96/greenkeeper-automower
 cd greenkeeper
 ```
 

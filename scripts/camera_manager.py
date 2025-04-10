@@ -13,7 +13,7 @@ class CameraManager:
         """Initialize the camera."""
         if self.picam2 is None:
             self.picam2 = Picamera2()
-            self.picam2.preview_configuration.main.size = (640, 640)
+            self.picam2.preview_configuration.main.size = (1920, 1080)
             self.picam2.preview_configuration.main.format = "RGB888"
             self.picam2.preview_configuration.align()
             self.picam2.configure("preview")
@@ -34,6 +34,3 @@ class CameraManager:
     def get_camera(self):
         """Return the camera object."""
         return self.picam2
-
-# Create a global instance of the CameraManager
-#camera_manager = CameraManager()

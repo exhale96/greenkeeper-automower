@@ -250,7 +250,8 @@ def rc_mode():
         ## Get & Update Camera Frames ##
         frame = camera_manager.picam2.capture_array()
         frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-        frame_surface = pygame.surfarray.make_surface(np.transpose(frame_bgr, (1, 0, 2)))
+        resized_frame = cv2.resize(frame_bgr, (640, 640))
+        frame_surface = pygame.surfarray.make_surface(np.transpose(resized_frame, (1, 0, 2)))
         screen.blit(frame_surface, (0, 0))
         
 
