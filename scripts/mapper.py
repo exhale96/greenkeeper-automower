@@ -108,7 +108,7 @@ def launch_rtk_loop():
             "-p", "none", 
             "rtk2go.com", 
             "2101", 
-            "VIAM_BASE2"
+            "NJ_north_central"
         ])
         rtk_process.wait()  # Wait for it to exit
         print("RTK process exited. Restarting in 5 seconds...")

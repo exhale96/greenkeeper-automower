@@ -11,7 +11,9 @@ from mapper import LawnMowerMapping
 import subprocess
 import atexit
 import threading
+from camera_manager import CameraManager
 
+camera_manager = CameraManager()
 '''
 # left motor
 PWM1_PIN = 21  # Hardware PWM for speed
@@ -122,17 +124,6 @@ class MotorDriver:
         self.set_motor(0, 0)
         self.set_blade(0)
 
-# def cleanup():
-#     print("Cleaning up... Terminating RTK process.")
-#     map_process.terminate()
-#     try:
-#         map_process.wait(timeout=5)
-#     except subprocess.TimeoutExpired:
-#         print("Force killing RTK process.")
-#         map_process.kill()
-
-# atexit.register(cleanup)
-
 def launch_rtk_loop():
     global mapper_process
 
@@ -144,7 +135,6 @@ def launch_rtk_loop():
         mapper_process.wait()  # Wait for it to exit
         print("RTK process exited. Restarting in 5 seconds...")
         time.sleep(5)  # Wait a bit before restarting
-
 
 def cleanup():
     print("Cleaning up... Terminating RTK process (if running).")
@@ -159,15 +149,6 @@ def cleanup():
 
 atexit.register(cleanup)
 
-
-if __name__ == "__main__":
-    rtk_thread = threading.Thread(target=launch_rtk_loop, daemon=True)
-    rtk_thread.start()
-
-
-
-
-
 if __name__ == "__main__":
     imgsz = 640 # Declares
     pygame.init() #init pygame for arrow-key robot control
@@ -175,7 +156,8 @@ if __name__ == "__main__":
     pygame.display.set_caption("Test Pygame Window")
 
     motor_driver = MotorDriver()
-    speed = 0.5
+    speed = 0.6
+    turn_speed = 0.8
     blade_speed = 0.3
 
     rtk_thread = threading.Thread(target=launch_rtk_loop, daemon=True)
@@ -194,16 +176,16 @@ if __name__ == "__main__":
                 if event.key == pygame.K_UP:
                     print("Up Arrow Pressed: Move Forward")
                     print("Speed: ", speed)
-                    motor_driver.set_motor(-speed, -speed*0.93)
+                    motor_driver.set_motor(-speed, -speed)
                 elif event.key == pygame.K_DOWN:
                     print("Down Arrow Pressed: Move Backward")
                     motor_driver.set_motor(speed, speed)
                 elif event.key == pygame.K_LEFT:
                     print("Left Arrow Pressed: Turn Left")
-                    motor_driver.set_motor(0, speed)
+                    motor_driver.set_motor(0, turn_speed)
                 elif event.key == pygame.K_RIGHT:
                     print("Right Arrow Pressed: Turn Right")
-                    motor_driver.set_motor(speed, 0)
+                    motor_driver.set_motor(turn_speed, 0)
                 elif event.key == pygame.K_0:
                     motor_driver.set_blade(blade_speed)
                     print("0 pressed: Activating Blade Motor")
@@ -218,16 +200,11 @@ if __name__ == "__main__":
                     motor_driver.stop_motors()
 
         ##          ##
-        annotated_frame, fps = process_frame()
-        frame_rotated = np.rot90(annotated_frame, k=-1)
-        frame_flipped = cv2.flip(frame_rotated, 1)
-        frame_surface = pygame.surfarray.make_surface(frame_flipped)
-        screen.blit(frame_surface, (0, 0))
 
-        ## Display FPS in PyGame ##
-        font = pygame.font.Font(None, 36)
-        fps_text = font.render(f"FPS: {fps:.1f}", True, (255, 255, 255))
-        screen.blit(fps_text, (10, 10))
+            camera_manager.init_camera()
+            frame = camera_manager.picam2.capture_array()
+            frame_surface = pygame.surfarray.make_surface(frame)
+            screen.blit(frame_surface, (0, 0))
 
         ## IMU Reading ##
         # yaw = motor_driver.read_imu()
