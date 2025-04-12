@@ -16,18 +16,11 @@ half = False
 agnostic_nms = False
 
 def process_frame(picam2):
-        # Create an instance of CameraManager
-
-
 
     if picam2 is None:
         print("Camera is not initialized!")
         return None, 0
-        # Wait until the camera is in the correct state (Available) before capturing
 
-        # Wait until the camera is in the Available state
-
-    
     # Capture a frame from the camera
     frame = picam2.capture_array()
     frame = cv2.resize(frame, (imgsz, imgsz))
