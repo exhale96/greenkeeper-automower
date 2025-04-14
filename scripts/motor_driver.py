@@ -62,13 +62,13 @@ class MotorDriver:
         self.rev = DigitalOutputDevice(10)  # Blade motor reverse pin
 
         # imu setup
-        """self.imu = mpu6050.mpu6050(0x68)
+        self.imu = mpu6050.mpu6050(0x68)
         self.alpha = 0.98
         self.yaw = 0.0
         self.last_time = time.time()
         self.gyro_bias_z = 0
         self.calibrate_gyro()
-"""
+
         
 
     def calibrate_gyro(self, samples=100):
@@ -87,7 +87,9 @@ class MotorDriver:
         self.last_time = current_time
         corrected_gyro_z = gyroscope_data['z'] - self.gyro_bias_z
         self.yaw += corrected_gyro_z*dt
+        self.yaw = self.yaw % 360  # Normalize
         return self.yaw
+
 
     def set_motor(self, left_speed, right_speed):
         """
@@ -124,33 +126,84 @@ class MotorDriver:
         self.set_motor(0, 0)
         self.set_blade(0)
 
-def launch_rtk_loop():
-    global mapper_process
+    def move_forward_with_heading(self, target_angle):
+        current_angle = self.read_imu()
+        error = ((current_angle - target_angle + 180) % 360) - 180
+        base_speed = 0.3
+        correction = 0.075
 
-    while True:
-        print("Launching mapper process...")
-        mapper_process = subprocess.Popen([
-            "python", "mapper.py"
-        ])
-        mapper_process.wait()  # Wait for it to exit
-        print("RTK process exited. Restarting in 5 seconds...")
-        time.sleep(5)  # Wait a bit before restarting
+        if abs(error) <= 1:
+            self.set_motor(-base_speed, -base_speed)
+        elif error > 1:
+            self.set_motor(-base_speed, -base_speed + correction)
+        else:
+            self.set_motor(-base_speed + correction, -base_speed)
 
-def cleanup():
-    print("Cleaning up... Terminating RTK process (if running).")
-    try:
-        if mapper_process.poll() is None:
-            mapper_process.terminate()
-            mapper_process.wait(timeout=5)
-            print("RTK process terminated cleanly.")
-    except Exception as e:
-        print(f"Could not terminate RTK process: {e}")
+    def move_backward_with_heading(self, target_angle):
+        current_angle = self.read_imu()
+        error = ((current_angle - target_angle + 180) % 360) - 180
+        base_speed = -0.3
+        correction = 0.1
 
+        if abs(error) <= 3:
+            self.set_motor(base_speed, base_speed)
+        elif error > 3:
+            self.set_motor(base_speed + correction, base_speed - correction)
+        else:
+            self.set_motor(base_speed - correction, base_speed + correction)
 
-atexit.register(cleanup)
+    def turn_left_to_90(self):
+        start_angle = self.read_imu()
+        target_angle = (start_angle - 90) % 360
+        while True:
+            current_angle = self.read_imu()
+            diff = ((current_angle - target_angle + 180) % 360) - 180
+            if abs(diff) <= 3:
+                self.stop_motors()
+                break
+            self.set_motor(-0.1, 0.1)
+            time.sleep(0.05)
+
+    def turn_right_to_90(self):
+        start_angle = self.read_imu()
+        target_angle = (start_angle + 90) % 360
+        while True:
+            current_angle = self.read_imu()
+            diff = ((current_angle - target_angle + 180) % 360) - 180
+            if abs(diff) <= 3:
+                self.stop_motors()
+                break
+            self.set_motor(0.2, -0.2)
+            time.sleep(0.001)
 
 if __name__ == "__main__":
-    ...
+    driver = MotorDriver()
+
+    print("Testing IMU-based forward movement...")
+    initial_angle = driver.read_imu()
+    for _ in range(30):
+        driver.move_forward_with_heading(initial_angle)
+        time.sleep(0.1)
+    driver.stop_motors()
+    time.sleep(1)
+
+    # print("Testing IMU-based right turn...")
+    # driver.turn_right_to_90()
+    # time.sleep(1)
+
+    # print("Testing IMU-based forward movement again...")
+    # for _ in range(20):
+    #     driver.move_forward_with_heading(initial_angle)
+    #     time.sleep(0.1)
+    # driver.stop_motors()
+    # time.sleep(1)
+
+    # print("Testing IMU-based left turn...")
+    # driver.turn_left_to_90()
+    # time.sleep(1)
+
+    driver.stop_motors()
+    print("IMU test sequence complete.")
 
 
         

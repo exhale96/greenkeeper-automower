@@ -1,6 +1,6 @@
 import pygame
 import sys
-from motor_driver import MotorDriver, launch_rtk_loop, cleanup
+from motor_driver import MotorDriver
 import numpy as np
 import cv2
 import time
@@ -10,6 +10,7 @@ import subprocess
 import atexit
 import threading
 from mapper import LawnMowerMapping
+import os
 
 camera_manager = CameraManager()
 # Initialize Pygame
@@ -50,6 +51,7 @@ class Button:
         text_surface = font.render(self.text, True, self.text_color)
         text_rect = text_surface.get_rect(center=self.rect.center)
         screen.blit(text_surface, text_rect)
+            
 
     def is_hovered(self, mouse_pos):
         return self.rect.collidepoint(mouse_pos)
@@ -58,15 +60,51 @@ class Button:
         return self.is_hovered(mouse_pos) and mouse_click
 
 # Create buttons for the menu
+mapping_text = "ERROR"
+
 button_rc = Button("RC Mode", 200, 100, 240, 50, PINK)
-button_mapping = Button("Mapping", 200, 170, 240, 50, PINK)
-button_sentry = Button("Sentry Mode", 200, 240, 240, 50, PINK)
-button_pathing = Button("Pathing Mode", 200, 310, 240, 50, PINK)
+button_sentry = Button("Sentry Mode", 200, 170, 240, 50, PINK)
+button_mapping = Button("Create a new map", 200, 240, 290, 50, PINK)
+button_pathing = Button("Choose a map", 200, 310, 240, 50, PINK)
 button_quit = Button("QUIT", 400, 590, 240, 50, (255, 0, 0), YELLOW) 
+button_currently_mapping = Button("Currently Mapping (cancel?)", 200, 170, 320, 50, WHITE)
+button_begin_mapping = Button("Begin Mapping", 200, 240, 290, 50, PINK)
 button_increase_speed = Button("+", 70, 490, 40, 40, PINK)  # Increase button
 button_decrease_speed = Button("-", 30, 490, 40, 40, PINK) # 
-button_currently_mapping = Button("Currently Mapping", 200, 240, 290, 50, PINK)
 button_back = Button("<- Esc", 0, 0, 100, 50, YELLOW, GREEN1)
+
+
+
+
+def launch_rtk_loop():
+    global rtk_process
+    email = "irc16@scarletmail.rutgers.edu"
+    print("Launching RTK process...")
+    rtk_process = subprocess.Popen([
+        "python", "rtk_coords.py", 
+        "-u", email, 
+        "-p", "none", 
+        "rtk2go.com", 
+        "2101", 
+        "NJ_north_central"
+    ])
+    return_code = rtk_process.wait()
+    print(f"RTK process exited with code: {return_code}")
+
+def cleanup():
+    print("Cleaning up... Terminating RTK process (if running).")
+    try:
+        if rtk_process.poll() is None:
+            rtk_process.terminate()
+            rtk_process.wait(timeout=5)
+            print("RTK process cleaned.")
+    except Exception as e:
+        print(f"Could not terminate RTK process: {e}")
+
+
+def get_map_files():
+    maps_dir = os.path.join("..","assets", "maps")
+    return [f for f in os.listdir(maps_dir) if os.path.isfile(os.path.join(maps_dir, f))]
 
 def draw_menu_screen():
     screen.fill(GREEN1)  # Fill the background with (COLOR)
@@ -103,6 +141,12 @@ def sentry_mode():
                 if event.key == pygame.K_ESCAPE:
                     camera_manager.stop_camera()  # Close the camera
                     return STATE_MENU  # Go back to main menu
+                
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_pos = pygame.mouse.get_pos()
+                if button_back.is_clicked(mouse_pos, True):
+                    print("Returning to main menu")
+                    running = False
 
         # Process Frame with CV
         annotated_frame, fps = process_frame_with_midas(camera_manager.picam2)
@@ -126,41 +170,79 @@ def sentry_mode():
     camera_manager.stop_camera()
 
 def pathing_mode():
-
     ## Setup ##
-    screen.fill(GREEN1)  # Clears the screen with the background color
+    screen.fill(GREEN1)
+    map_files = get_map_files()
+    scroll_offset = 0
+    max_visible = 6
+    selected_map = None
+    map_buttons = []
 
-    ## Main Loop ##
+    def update_map_buttons():
+        map_buttons.clear()
+        for i, map_name in enumerate(map_files[scroll_offset:scroll_offset + max_visible]):
+            btn = Button(map_name, 200, 100 + i * 60, 240, 50, PINK)
+            map_buttons.append((btn, map_name))
+
+    update_map_buttons()
+
     running = True
     while running:
+        screen.fill(GREEN1)
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                running = False
-            if event.type == pygame.KEYDOWN:
+                return STATE_QUIT
+            elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    running = False  # Exit the pathing mode and return to the menu
-        
+                    return STATE_MENU
+                elif event.key == pygame.K_DOWN:
+                    if scroll_offset + max_visible < len(map_files):
+                        scroll_offset += 1
+                        update_map_buttons()
+                elif event.key == pygame.K_UP:
+                    if scroll_offset > 0:
+                        scroll_offset -= 1
+                        update_map_buttons()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_pos = pygame.mouse.get_pos()
+                if button_back.is_clicked(mouse_pos, True):
+                    print("Returning to main menu")
+                    running = False
+                for btn, map_name in map_buttons:
+                    if btn.is_clicked(mouse_pos, True):
+                        selected_map = map_name
+                        print(f"Selected map: {selected_map}")
+                        # TODO: Load or pass the selected map to your pathing logic
+                        return STATE_PATHING
 
-        # Draw or update any display related to pathing mode here
-        button_quit.draw(screen)
+        for btn, _ in map_buttons:
+            btn.draw(screen)
 
+        button_back.draw(screen)
         pygame.display.flip()
-        pygame.time.delay(50)  # To avoid consuming too many resources
-
+        pygame.time.delay(50)
     return STATE_MENU
-def mapping_mode():
 
-    ## Setup ##
-    screen.fill(GREEN1)  # Clears the screen with the background color
-    rtk_thread = threading.Thread(target=launch_rtk_loop, daemon=True)
-    rtk_thread.start()
+def mapping_mode():
+    atexit.register(cleanup)
+    rtk_thread = None
+    screen.fill(GREEN1) 
+    is_mapping = False
     motor_driver = MotorDriver()
-    speed = 0.6
+    speed = 0.3
+    controls_font = pygame.font.Font(None, 28)
+    control_panel_width = 210# Width of the control panel
+    control_panel_height = 180# Height of the control panel
+    control_panel_surface = pygame.Surface((control_panel_width, control_panel_height))
+    control_panel_surface.set_alpha(150)  # Set transparency (0-255, where 255 is fully opaque)
+    control_panel_surface.fill((0, 0, 0))  # Fill with black color
 
     ## Main Loop ##
     running = True
     while running:
-
+        
+        screen.fill(GREEN1)
         ## Keys & Inputs ##
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -189,24 +271,62 @@ def mapping_mode():
                     motor_driver.stop_motors()
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
+                if button_back.is_clicked(mouse_pos, True):
+                    print("Returning to main menu")
+                    running = False
                 if button_increase_speed.is_clicked(mouse_pos, True):
                     speed = min(speed + 0.1, 1.0)
                     print("Speed Increased!")
                 elif button_decrease_speed.is_clicked(mouse_pos, True):
                     speed = max(speed - 0.1, 0.1)
                     print("Speed Decreased!")
-        
-        ## Update GUI ##
-        button_currently_mapping.draw(screen)
+                elif button_begin_mapping.is_clicked(mouse_pos, True):
+                    screen.fill(GREEN1)
+                    pygame.display.flip()
+                    print("Mapping Started")
+                    is_mapping = True
+                    rtk_thread = threading.Thread(target=launch_rtk_loop, daemon=True)
+                    rtk_thread.start()
+                elif button_currently_mapping.is_clicked(mouse_pos, True):
+                    screen.fill(GREEN1)
+                    pygame.display.flip()
+                    print("Stopping Mapping")
+                    is_mapping = False
+                    print("mapping = ")
+                    print(is_mapping)
+                    cleanup()
+
+            
+
+        if is_mapping:
+            button_currently_mapping.draw(screen) 
+            button_increase_speed.draw(screen)
+            button_decrease_speed.draw(screen)
+            screen.blit(control_panel_surface, (20, 530))  # Position of the control panel
+            controls_text = [
+                "Speed: " + str(round(speed*100,1))+ "%",
+                "Controls: Arrow Keys",
+                "Blade Act.: '0' Key",
+            ]
+            y_offset = 10  # Starting offset for text drawing (within the background)
+            for line in controls_text:
+                control_line = controls_font.render(line, True, (255, 255, 255))
+                screen.blit(control_line, (30, 540 + y_offset))  # Adjust position within the panel
+                y_offset += 30  # Move down for the next line
+        else:
+            button_begin_mapping.draw(screen)
+
+                    
+        # ## Update GUI ##
         button_back.draw(screen)
 
         ## Update Display (last) ##
         pygame.display.flip()
-    ## Exit Process ##                 
-    cleanup()
-    atexit.register(cleanup)
+    ## Exit Process ##
+    if rtk_thread and rtk_thread.is_alive():
+        cleanup()                 
     return STATE_MENU
-    
+
 def rc_mode():
     ## Function Setup ##
     motor_driver = MotorDriver()
@@ -250,12 +370,17 @@ def rc_mode():
                     motor_driver.stop_motors()
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
+                if button_back.is_clicked(mouse_pos, True):
+                    print("Returning to main menu")
+                    running = False
                 if button_increase_speed.is_clicked(mouse_pos, True):
                     speed = min(speed + 0.1, 1.0)
                     print("Speed Increased!")
                 elif button_decrease_speed.is_clicked(mouse_pos, True):
                     speed = max(speed - 0.1, 0.1)
                     print("Speed Decreased!")
+
+  
 
         ## Get & Update Camera Frames ##
         frame = camera_manager.picam2.capture_array()
