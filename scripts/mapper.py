@@ -16,6 +16,7 @@ class LawnMowerMapping:
         self.longitudes = []
         self.paused = False
         self.out_file_path = out_file_path
+        
 
         # Initialize plot
         plt.ion()
@@ -61,8 +62,8 @@ class LawnMowerMapping:
         except KeyboardInterrupt:
             print("Stopping the lawn map update.")
            # break -Not sure why but this should be in a loop, made motor-driver.py not work since it imports something from here 
-        plt.ioff()
-        plt.show()
+        # plt.ioff()
+        # plt.show()
 
     def nmea_to_decimal(self, lat_deg, lat_dir, lon_deg, lon_dir):
         """Converts NMEA format to decimal degrees."""
@@ -76,7 +77,7 @@ class LawnMowerMapping:
         return round(lon_conv, 7), round(lat_conv, 7)
     
 
-    def update_plot(self):
+    # def update_plot(self):
         """Updates the plot with the latest GPS data."""
         self.ax.clear()
         padding = 0.0001  # Small padding to ensure the plot isn't too tight
@@ -101,47 +102,47 @@ class LawnMowerMapping:
         self.file_path.close()
         plt.close(self.fig)
 
-def launch_rtk_loop():
-    global rtk_process
-    email = "irc16@scarletmail.rutgers.edu"
-    print("Launching RTK process...")
-    rtk_process = subprocess.Popen([
-        "python", "rtk_coords.py", 
-        "-u", email, 
-        "-p", "none", 
-        "rtk2go.com", 
-        "2101", 
-        "NJ_north_central"
-    ], preexec_fn=os.setsid)
-    print(f"RTK process started with PID: {rtk_process.pid}")
-    return_code = rtk_process.wait()
-    print(f"Exit code: {return_code}")
+# def launch_rtk_loop():
+#     global rtk_process
+#     email = "irc16@scarletmail.rutgers.edu"
+#     print("Launching RTK process...")
+#     rtk_process = subprocess.Popen([
+#         "python", "rtk_coords.py", 
+#         "-u", email, 
+#         "-p", "none", 
+#         "rtk2go.com", 
+#         "2101", 
+#         "NJ_north_central"
+#     ], preexec_fn=os.setsid)
+#     print(f"RTK process started with PID: {rtk_process.pid}")
+#     return_code = rtk_process.wait()
+#     print(f"Exit code: {return_code}")
     
 
 
-def cleanup():
-    print("Cleaning up... Terminating RTK process (if running).")
-    try:
-        if rtk_process.poll() is None:
-            rtk_process.terminate()
-            rtk_process.wait(timeout=5)
-            print("RTK process cleaned.")
-    except Exception as e:
-        print(f"Could not terminate RTK process: {e}")
+# def cleanup():
+#     print("Cleaning up... Terminating RTK process (if running).")
+#     try:
+#         if rtk_process.poll() is None:
+#             rtk_process.terminate()
+#             rtk_process.wait(timeout=5)
+#             print("RTK process cleaned.")
+#     except Exception as e:
+#         print(f"Could not terminate RTK process: {e}")
 
 
 
 
-if __name__ == "__main__":
-    rtk_thread = threading.Thread(target=launch_rtk_loop, daemon=True)
-    rtk_thread.start()
+# if __name__ == "__main__":
+#     rtk_thread = threading.Thread(target=launch_rtk_loop, daemon=True)
+#     rtk_thread.start()
 
 
-    lawn_mower_map = LawnMowerMapping(out_file_path='../assets/maps/map1.txt', update_interval=0.05)
-    try:
-        for _ in range(10):
-            lawn_mower_map.read_gps_coordinates()
-    except KeyboardInterrupt:
-        print("Stopping the lawn map update.")
+#     lawn_mower_map = LawnMowerMapping(out_file_path='../assets/maps/map1.txt', update_interval=0.05)
+#     try:
+#         for _ in range(10):
+#             lawn_mower_map.read_gps_coordinates()
+#     except KeyboardInterrupt:
+#         print("Stopping the lawn map update.")
 
-    atexit.register(cleanup)
+#     atexit.register(cleanup)

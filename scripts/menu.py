@@ -12,6 +12,7 @@ import threading
 from mapper import LawnMowerMapping
 import os
 
+
 camera_manager = CameraManager()
 # Initialize Pygame
 pygame.init()
@@ -33,6 +34,7 @@ STATE_MAPPING = "mapping"
 STATE_SENTRY = "sentry"
 STATE_PATHING = "pathing"
 STATE_QUIT = "quit"
+
 current_state = STATE_MENU
 
 # Menu button class
@@ -101,10 +103,56 @@ def cleanup():
     except Exception as e:
         print(f"Could not terminate RTK process: {e}")
 
-
 def get_map_files():
     maps_dir = os.path.join("..","assets", "maps")
     return [f for f in os.listdir(maps_dir) if os.path.isfile(os.path.join(maps_dir, f))]
+
+def get_map_name(screen):
+
+    font = pygame.font.SysFont(None, 48)
+    input_box = pygame.Rect(100, 100, 400, 50)
+    color_inactive = pygame.Color('lightskyblue3')
+    color_active = pygame.Color('dodgerblue2')
+    color = color_inactive
+    active = False
+    text = ''
+    done = False
+
+    while not done:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                # If the user clicked on the input_box rect.
+                if input_box.collidepoint(event.pos):
+                    active = not active
+                else:
+                    active = False
+                color = color_active if active else color_inactive
+
+            elif event.type == pygame.KEYDOWN:
+                if active:
+                    if event.key == pygame.K_RETURN:                        
+                        open("../assets/maps/" + text.strip() + ".txt", "w").close()  # Create a new file with the map name
+                        return text.strip()  # return the map name
+                    elif event.key == pygame.K_BACKSPACE:
+                        text = text[:-1]
+                    else:
+                        text += event.unicode
+
+        screen.fill((30, 30, 30))
+        txt_surface = font.render(text, True, color)
+        width = max(400, txt_surface.get_width()+10)
+        input_box.w = width
+        screen.blit(txt_surface, (input_box.x+5, input_box.y+5))
+        pygame.draw.rect(screen, color, input_box, 2)
+
+        prompt = font.render("Enter Map Name:", True, (255, 255, 255))
+        screen.blit(prompt, (100, 40))
+
+        pygame.display.flip()
 
 def draw_menu_screen():
     screen.fill(GREEN1)  # Fill the background with (COLOR)
@@ -207,7 +255,6 @@ def pathing_mode():
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
                 if button_back.is_clicked(mouse_pos, True):
-                    print("Returning to main menu")
                     running = False
                 for btn, map_name in map_buttons:
                     if btn.is_clicked(mouse_pos, True):
@@ -222,6 +269,7 @@ def pathing_mode():
         button_back.draw(screen)
         pygame.display.flip()
         pygame.time.delay(50)
+    print("Returning to main menu...") 
     return STATE_MENU
 
 def mapping_mode():
@@ -272,7 +320,6 @@ def mapping_mode():
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
                 if button_back.is_clicked(mouse_pos, True):
-                    print("Returning to main menu")
                     running = False
                 if button_increase_speed.is_clicked(mouse_pos, True):
                     speed = min(speed + 0.1, 1.0)
@@ -287,6 +334,12 @@ def mapping_mode():
                     is_mapping = True
                     rtk_thread = threading.Thread(target=launch_rtk_loop, daemon=True)
                     rtk_thread.start()
+
+                    map_name = get_map_name(screen)
+                    file_path = f"../assets/maps/{map_name}.txt"
+
+                    lawn_map = LawnMowerMapping(out_file_path = file_path)
+
                 elif button_currently_mapping.is_clicked(mouse_pos, True):
                     screen.fill(GREEN1)
                     pygame.display.flip()
@@ -324,7 +377,8 @@ def mapping_mode():
         pygame.display.flip()
     ## Exit Process ##
     if rtk_thread and rtk_thread.is_alive():
-        cleanup()                 
+        cleanup()
+    print("Returning to main menu...")                 
     return STATE_MENU
 
 def rc_mode():
@@ -371,7 +425,6 @@ def rc_mode():
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
                 if button_back.is_clicked(mouse_pos, True):
-                    print("Returning to main menu")
                     running = False
                 if button_increase_speed.is_clicked(mouse_pos, True):
                     speed = min(speed + 0.1, 1.0)
@@ -410,6 +463,7 @@ def rc_mode():
         ## Update Display (last) ##
         pygame.display.flip()
     camera_manager.stop_camera()
+    print("Returning to main menu...") 
     return STATE_MENU
 
 def run_menu():
@@ -457,8 +511,8 @@ def run_menu():
     sys.exit()
 
 
-
 if __name__ == "__main__":
+    atexit.register(cleanup)
 
     while current_state != STATE_QUIT:
         if current_state == STATE_MENU:
@@ -477,4 +531,5 @@ if __name__ == "__main__":
 
         elif current_state == STATE_PATHING:
             current_state = pathing_mode()
+
     run_menu()
