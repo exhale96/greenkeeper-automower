@@ -33,14 +33,14 @@ This repo is mostly for demonstration purposes, but if you wish to try using the
 1. Create a Virtual Env & Activate it
 
 ```bash
-python3 -m venv greenkeeper_project
-source greenkeeper_project/bin/activate
+python -m venv greenkeeper
+source greenkeeper/bin/activate
 ```
 2. Clone the repo:
 
 ```bash
 git clone https://github.com/exhale96/greenkeeper-automower
-cd greenkeeper
+cd greenkeeper-automower
 ```
 
 3. Install all required dependancies by executing "requirements.txt" 
