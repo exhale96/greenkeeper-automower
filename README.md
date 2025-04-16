@@ -5,12 +5,9 @@ Designed as a capstone project for Rutgers University New Brunswick, ECE Departm
 ## 📸 Features
 
 - Autonomous and remote control modes
-- Real-time computer vision using YOLOv5
-- Simple Pygame-based user interface
-- RC (joystick) and keyboard navigation
-- Multiple operational states: Idle, Pathing, Sentry, and more
-- TensorFlow and PyTorch model compatibility
-- Works on Raspberry Pi 5 with camera input
+- Real-time computer vision using YOLOv8n
+- Simple Pygame-based menu & user interface
+- Multiple operational states: Idle, RC, Pathing, Sentry, and more
 - Modular architecture for easy extension
 
 ## 🛠️ Hardware & Software Setup
