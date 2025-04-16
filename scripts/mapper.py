@@ -55,13 +55,14 @@ class LawnMowerMapping:
                 except ValueError:
                     return
             
-            self.update_plot()
+            # self.update_plot()
         except FileNotFoundError:
             print(f"File {self.file_path} not found. Waiting for file to be created.")
             time.sleep(self.update_interval)
+            return
         except KeyboardInterrupt:
             print("Stopping the lawn map update.")
-           # break -Not sure why but this should be in a loop, made motor-driver.py not work since it imports something from here 
+            return
         # plt.ioff()
         # plt.show()
 
@@ -77,8 +78,14 @@ class LawnMowerMapping:
         return round(lon_conv, 7), round(lat_conv, 7)
     
 
-    # def update_plot(self):
-        """Updates the plot with the latest GPS data."""
+    def close(self):
+        """Close the file and plot."""
+        self.gps_file.close()
+        #plt.close(self.fig)
+
+    """
+    def update_plot(self):
+
         self.ax.clear()
         padding = 0.0001  # Small padding to ensure the plot isn't too tight
         if self.latitudes and self.longitudes:
@@ -96,11 +103,9 @@ class LawnMowerMapping:
         
         plt.draw()
         plt.pause(self.update_interval)
-        
-    def close(self):
-        """Close the file and plot."""
-        self.file_path.close()
-        plt.close(self.fig)
+    """    
+
+
 
 # def launch_rtk_loop():
 #     global rtk_process

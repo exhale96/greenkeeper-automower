@@ -1,20 +1,18 @@
-from gpiozero import PWMOutputDevice, DigitalOutputDevice
+from gpiozero import PWMOutputDevice, DigitalOutputDevice, Button, Device
 import time
 import sys
 import mpu6050
-import pygame
-import cv2
+#import pygame
+#import cv2
 import numpy as np
-from picamera2 import Picamera2
-from computer_vision import process_frame
-from mapper import LawnMowerMapping
-import subprocess
-import atexit
-import threading
-from camera_manager import CameraManager
+#from picamera2 import Picamera2
+#from computer_vision import process_frame
+#from mapper import LawnMowerMapping
+#from camera_manager import CameraManager
+from threading import Lock
 
-camera_manager = CameraManager()
-'''
+
+"""
 # left motor
 PWM1_PIN = 21  # Hardware PWM for speed
 DIR1_PIN = 20  # Direction control
@@ -36,17 +34,56 @@ ENCODER_RIGHT_B = 24  # GPIO pin for right motor encoder B
 
 IMU_SDA = 2 # GPIO Pin for imu SDA
 IMU_SCL = 3 # GPUI Pin for imu SCL
-'''
 
-"""
+
+
+
 # IMU SETUP
 IMU = mpu6050.mpu6050(0x68)
 IMU_SDA = 2 # GPIO Pin for imu SDA
 IMU_SCL = 3 # GPUI Pin for imu SCL
 alpha = 0.98
 yaw = 0.0
-last_time = time.time()"""
+last_time = time.time()
+"""
 
+class Encoder:
+    def __init__(self, pin_a, pin_b=None, ticks_per_revolution=374):
+        self.pin_a = Button(pin_a, pull_up=True)  # Use bounce_time to avoid multiple counts
+        self.pin_b = Button(pin_b, pull_up=True) if pin_b is not None else None
+        self.ticks = 0
+        self.lock = Lock()
+        self.last_time = time.time()
+        self.last_tick_count = 0
+        self.ticks_per_revolution = ticks_per_revolution
+
+        self.pin_a.when_pressed = self._increment
+
+    def _increment(self):
+        with self.lock:
+            self.ticks += 1
+
+    def reset(self):
+        with self.lock:
+            self.ticks = 0
+            self.last_tick_count = 0
+            self.last_time = time.time()
+
+    def get_ticks(self):
+        with self.lock:
+            return self.ticks
+
+    def get_rpm(self):
+        with self.lock:
+            now = time.time()
+            dt = now - self.last_time
+            if dt == 0:
+                return 0.0
+            tick_diff = self.ticks - self.last_tick_count
+            self.last_tick_count = self.ticks
+            self.last_time = now
+        revolutions_per_sec = tick_diff / self.ticks_per_revolution / dt
+        return revolutions_per_sec * 60  # convert to RPM
 class MotorDriver:
 
     def __init__(self):
@@ -69,6 +106,16 @@ class MotorDriver:
         self.gyro_bias_z = 0
         self.calibrate_gyro()
 
+        ENCODER_LEFT_A = 7  # GPIO pin for left motor encoder A
+        ENCODER_LEFT_B = 8  # GPIO pin for left motor encoder B
+
+        ENCODER_RIGHT_A = 23  # GPIO pin for right motor encoder A
+        ENCODER_RIGHT_B = 24  # GPIO pin for right motor encoder B
+                # encoder setup
+        self.left_encoder = Encoder(ENCODER_LEFT_A, ENCODER_LEFT_B)
+        self.right_encoder = Encoder(ENCODER_RIGHT_A, ENCODER_RIGHT_B)
+
+
         
 
     def calibrate_gyro(self, samples=100):
@@ -90,6 +137,10 @@ class MotorDriver:
         self.yaw = self.yaw % 360  # Normalize
         return self.yaw
 
+    def get_wheel_speeds(self):
+        left_rpm = self.left_encoder.get_rpm()
+        right_rpm = self.right_encoder.get_rpm()
+        return left_rpm, right_rpm
 
     def set_motor(self, left_speed, right_speed):
         """
@@ -152,40 +203,76 @@ class MotorDriver:
         else:
             self.set_motor(base_speed - correction, base_speed + correction)
 
-    def turn_left_to_90(self):
+    def turn_left_to_90(self, angle=90):
+        
         start_angle = self.read_imu()
-        target_angle = (start_angle - 90) % 360
+        target_angle = (start_angle + angle) % 360
+        print(f"Starting angle: {start_angle}")
+        print(f"Target angle: {target_angle}")
         while True:
             current_angle = self.read_imu()
             diff = ((current_angle - target_angle + 180) % 360) - 180
+            print(f"Current angle: {current_angle}")
+            print(f"Difference: {diff}")
             if abs(diff) <= 3:
                 self.stop_motors()
                 break
-            self.set_motor(-0.1, 0.1)
-            time.sleep(0.05)
+            self.set_motor(0, 0.1)
+            time.sleep(0.1)
 
-    def turn_right_to_90(self):
+    def turn_right_to_90(self, angle=90):
         start_angle = self.read_imu()
-        target_angle = (start_angle + 90) % 360
+        target_angle = (start_angle - angle) % 360
+        print(f"Starting angle: {start_angle}")
+        print(f"Target angle: {target_angle}")
         while True:
             current_angle = self.read_imu()
             diff = ((current_angle - target_angle + 180) % 360) - 180
+            print(f"Current angle: {current_angle}")
+            print(f"Difference: {diff}")
             if abs(diff) <= 3:
                 self.stop_motors()
                 break
-            self.set_motor(0.2, -0.2)
-            time.sleep(0.001)
+            self.set_motor(0.1, 0)
+            time.sleep(0.1)
+
+    def turn_left(self, angle=90):
+        angle = angle - 3
+        start_angle = self.read_imu()
+        last_angle = start_angle
+        total_turned = 0
+
+        self.set_motor(-0.25, 0.25)  # Turn left0
+
+        while total_turned < angle:
+            current_angle = self.read_imu()
+            delta = (current_angle - last_angle + 360) % 360
+
+            if delta < 180:
+                total_turned += delta
+            last_angle = current_angle
+            print(f"Current angle: {current_angle}, Total turned: {total_turned}")
+            time.sleep(0.05)
+        self.stop_motors()
 
 if __name__ == "__main__":
     driver = MotorDriver()
 
-    print("Testing IMU-based forward movement...")
-    initial_angle = driver.read_imu()
-    for _ in range(30):
-        driver.move_forward_with_heading(initial_angle)
-        time.sleep(0.1)
+    RUN_TIME_SEC = 5
+    print(f"Running motors at 10% speed for {RUN_TIME_SEC} seconds...")
+    driver.set_motor(0.1, 0.1)
+
+    start_time = time.time()
+    try:
+        while time.time() - start_time < RUN_TIME_SEC:
+            left_rpm, right_rpm = driver.get_wheel_speeds()
+            print(f"Left RPM: {left_rpm:.2f}, Right RPM: {right_rpm:.2f}")
+            time.sleep(0.1)
+    except KeyboardInterrupt:
+        print("Interrupted.")
+
     driver.stop_motors()
-    time.sleep(1)
+    print("Motors stopped.")
 
     # print("Testing IMU-based right turn...")
     # driver.turn_right_to_90()
@@ -197,13 +284,21 @@ if __name__ == "__main__":
     #     time.sleep(0.1)
     # driver.stop_motors()
     # time.sleep(1)
+    # driver.stop_motors()
+    
 
-    # print("Testing IMU-based left turn...")
-    # driver.turn_left_to_90()
-    # time.sleep(1)
+
+
+    """
+    print("Testing IMU-based right turn...")
+    driver.turn_right_to_90()
+    time.sleep(2)
+    """
 
     driver.stop_motors()
-    print("IMU test sequence complete.")
+    time.sleep(2)
+
+    # print("IMU test sequence complete.")
 
 
         

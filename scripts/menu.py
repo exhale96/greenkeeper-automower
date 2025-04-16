@@ -333,18 +333,16 @@ def mapping_mode():
                         active = False
                     color = color_active if active else color_inactive
                     if button_back.is_clicked(event.pos, True):
-                        return None
+                        done = True
 
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         print("DEBUG esc pressed")
-                        done = True
-                        return None                 
+                        done = True                 
                     if active:
                         if event.key == pygame.K_ESCAPE:
                             print("DEBUG esc pressed")
                             done = True
-                            return None
                         if event.key == pygame.K_RETURN:
                             done = True                        
                             open("../assets/maps/" + text.strip() + ".txt", "w").close()  # Create a new file with the map name
@@ -407,19 +405,19 @@ def mapping_mode():
                     running = False
                 elif event.key == pygame.K_UP:
                     print("Up Arrow Pressed: Move Forward")
-                    MotorDriver.set_motor(speed, speed)
+                    motor_driver.set_motor(speed, speed)
                 elif event.key == pygame.K_DOWN:
                     print("Down Arrow Pressed: Move Backward")
-                    MotorDriver.set_motor(-speed, -speed)
+                    motor_driver.set_motor(-speed, -speed)
                 elif event.key == pygame.K_LEFT:
                     print("Left Arrow Pressed: Turn Left")
-                    MotorDriver.set_motor(-speed, speed)
+                    motor_driver.set_motor(-speed, speed)
                 elif event.key == pygame.K_RIGHT:
                     print("Right Arrow Pressed: Turn Right")
-                    MotorDriver.set_motor(speed, -speed)
+                    motor_driver.set_motor(speed, -speed)
                 elif event.key == pygame.K_0:
                     print("0 pressed: Activating Blade Motor")
-                    MotorDriver.set_blade(0.3)
+                    motor_driver.set_blade(0.3)
             elif event.type == pygame.KEYUP:
                 if event.key in [pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT]:
                     print("Key Released: Stop Motors")
@@ -431,14 +429,12 @@ def mapping_mode():
                         cleanup()
                     pygame.event.clear()                   
                     running = False
-                    return STATE_MENU
                 elif button_save_map.is_clicked(mouse_pos, True):
                     print("Saving map...")
                     if rtk_thread and rtk_thread.is_alive():
                         cleanup()
                     pygame.event.clear()
                     running = False
-                    return STATE_MENU
                 elif button_delete_map.is_clicked(mouse_pos, True):
                     print("Deleting map...")
                     os.remove(file_path)
@@ -447,7 +443,6 @@ def mapping_mode():
                         cleanup()
                     pygame.event.clear()
                     running = False
-                    return STATE_MENU
                 elif button_increase_speed.is_clicked(mouse_pos, True):
                     speed = min(speed + 0.1, 1.0)
                     print("Speed Increased!")
@@ -508,10 +503,10 @@ def rc_mode():
                 elif event.key == pygame.K_UP:
                     print("Up Arrow Pressed: Move Forward")
                     print(speed)
-                    motor_driver.set_motor(-speed, -speed)
+                    motor_driver.set_motor(speed, speed)
                 elif event.key == pygame.K_DOWN:
                     print("Down Arrow Pressed: Move Backward")
-                    motor_driver.set_motor(speed, speed)
+                    motor_driver.set_motor(-speed, -speed)
                 elif event.key == pygame.K_LEFT:
                     print("Left Arrow Pressed: Turn Left")
                     motor_driver.set_motor(-speed, speed)
