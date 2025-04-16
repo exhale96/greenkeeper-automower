@@ -386,7 +386,13 @@ def mapping_mode():
     control_panel_surface.set_alpha(150)  # Set transparency (0-255, where 255 is fully opaque)
     control_panel_surface.fill((0, 0, 0))  # Fill with black color
 
-    
+    file_path = write_new_map()
+    if file_path is None:
+        print("No file name provided. Returning to menu.")
+        if rtk_thread and rtk_thread.is_alive():
+            cleanup()
+        pygame.event.clear()
+        return STATE_MENU
     ## Main Loop ##
     running = True
     while running:
@@ -584,15 +590,10 @@ def run_menu():
             return STATE_RC
         
         elif button_mapping.is_clicked(mouse_pos, mouse_click):
-            # Only allow transition to mapping if we weren't just there
-            if last_state != STATE_MAPPING:
-                print("Mapping Selected")
-                last_state = STATE_MAPPING
-                return STATE_MAPPING
-            else:
-                print("DEBUG: Preventing immediate re-entry to mapping mode")
-                pygame.event.clear()
-                pygame.time.delay(200)  # Add small delay
+
+            print("Mapping Selected")
+            return STATE_MAPPING
+
 
         elif button_sentry.is_clicked(mouse_pos, mouse_click):
             print("Sentry Mode Selected")
@@ -628,8 +629,7 @@ if __name__ == "__main__":
             current_state = rc_mode()
 
         elif current_state == STATE_MAPPING:
-            print(current_state)
-            print("thats the state ^^^^^^^")
+
             current_state = mapping_mode()
 
         elif current_state == STATE_SENTRY:
