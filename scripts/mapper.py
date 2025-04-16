@@ -18,12 +18,12 @@ class LawnMowerMapping:
         self.out_file_path = out_file_path
         
 
-        # Initialize plot
-        plt.ion()
-        self.fig, self.ax = plt.subplots()
-        self.ax.set_xlabel("Longitude")
-        self.ax.set_ylabel("Latitude")
-        self.ax.set_title("GPS Path Trace")
+        # # Initialize plot
+        # plt.ion()
+        # self.fig, self.ax = plt.subplots()
+        # self.ax.set_xlabel("Longitude")
+        # self.ax.set_ylabel("Latitude")
+        # self.ax.set_title("GPS Path Trace")
 
     def read_gps_coordinates(self):
         """Reads new GPS coordinates from the file."""

@@ -34,16 +34,27 @@ STATE_MAPPING = "mapping"
 STATE_SENTRY = "sentry"
 STATE_PATHING = "pathing"
 STATE_QUIT = "quit"
+STATE_WRITE_NEW_MAP = "write_new_map"
 
 current_state = STATE_MENU
 
 # Menu button class
 class Button:
-    def __init__(self, text, x, y, width, height, color, text_color=GREEN1):
+    def __init__(self, text, x, y, width=None, height=None, color=PINK, text_color=GREEN1, padding_x=20, padding_y=10):
         self.text = text
-        self.rect = pygame.Rect(x, y, width, height)
         self.color = color
         self.text_color = text_color
+        self.padding_x = padding_x
+        self.padding_y = padding_y
+
+        # Render the text to measure size
+        text_surface = font.render(self.text, True, self.text_color)
+        text_rect = text_surface.get_rect()
+
+        # Auto-size button if width/height not given
+        self.width = width if width else text_rect.width + 2 * padding_x
+        self.height = height if height else text_rect.height + 2 * padding_y
+        self.rect = pygame.Rect(x, y, self.width, self.height)
 
     def draw(self, screen):
         # Draw button
@@ -62,15 +73,14 @@ class Button:
         return self.is_hovered(mouse_pos) and mouse_click
 
 # Create buttons for the menu
-mapping_text = "ERROR"
-
 button_rc = Button("RC Mode", 200, 100, 240, 50, PINK)
 button_sentry = Button("Sentry Mode", 200, 170, 240, 50, PINK)
-button_mapping = Button("Create a new map", 200, 240, 290, 50, PINK)
+button_mapping = Button("Create a new map", 165, 240, 310, 50, PINK)
 button_pathing = Button("Choose a map", 200, 310, 240, 50, PINK)
 button_quit = Button("QUIT", 400, 590, 240, 50, (255, 0, 0), YELLOW) 
-button_currently_mapping = Button("Currently Mapping (cancel?)", 200, 170, 320, 50, WHITE)
-button_begin_mapping = Button("Begin Mapping", 200, 240, 290, 50, PINK)
+button_delete_map = Button("Cancel & Delete", 170, 170, 350, 50, (255,0,0), YELLOW)
+button_save_map = Button("Stop & Save", 200, 240, 240, 50, GREEN2, YELLOW)
+button_enter_mapname = Button("Click here to enter map name: ",200, 240, 290, 50, PINK)
 button_increase_speed = Button("+", 70, 490, 40, 40, PINK)  # Increase button
 button_decrease_speed = Button("-", 30, 490, 40, 40, PINK) # 
 button_back = Button("<- Esc", 0, 0, 100, 50, YELLOW, GREEN1)
@@ -103,58 +113,73 @@ def cleanup():
     except Exception as e:
         print(f"Could not terminate RTK process: {e}")
 
-def get_map_files():
+def get_map_dir():
     maps_dir = os.path.join("..","assets", "maps")
     return [f for f in os.listdir(maps_dir) if os.path.isfile(os.path.join(maps_dir, f))]
 
-def get_map_name(screen):
+def choose_map(surface):
+    pygame.event.clear()
+    font = pygame.font.SysFont(None, 36)
+    title_font = pygame.font.SysFont(None, 48)
+    map_dir = "../assets/maps/"
+    maps = [f for f in os.listdir(map_dir) if f.endswith(".txt")]
 
-    font = pygame.font.SysFont(None, 48)
-    input_box = pygame.Rect(100, 100, 400, 50)
-    color_inactive = pygame.Color('lightskyblue3')
-    color_active = pygame.Color('dodgerblue2')
-    color = color_inactive
-    active = False
-    text = ''
+    item_height = 50
+    padding = 10
+    start_y = 100
+    scroll_offset = 0
+    max_display = 8  # number of items visible at once
+
+    clock = pygame.time.Clock()
     done = False
 
     while not done:
+        screen.fill((30, 30, 30))
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+
+        # Handle events
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 exit()
-
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                # If the user clicked on the input_box rect.
-                if input_box.collidepoint(event.pos):
-                    active = not active
-                else:
-                    active = False
-                color = color_active if active else color_inactive
-
             elif event.type == pygame.KEYDOWN:
-                if active:
-                    if event.key == pygame.K_RETURN:                        
-                        open("../assets/maps/" + text.strip() + ".txt", "w").close()  # Create a new file with the map name
-                        return text.strip()  # return the map name
-                    elif event.key == pygame.K_BACKSPACE:
-                        text = text[:-1]
-                    else:
-                        text += event.unicode
+                if event.key == pygame.K_ESCAPE:
+                    return None
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 4:  # scroll up
+                    scroll_offset = max(scroll_offset - 1, 0)
+                elif event.button == 5:  # scroll down
+                    scroll_offset = min(scroll_offset + 1, max(0, len(maps) - max_display))
+                elif event.button == 1:  # left click
+                    for i, name in enumerate(maps[scroll_offset:scroll_offset + max_display]):
+                        rect = pygame.Rect(100, start_y + i * (item_height + padding), 400, item_height)
+                        if rect.collidepoint(mouse_x, mouse_y):
+                            return name  # return selected map
+                elif button_back.is_clicked((mouse_x, mouse_y), True):
+                    return None
+            
+        # Draw prompt
+        title = title_font.render("Choose a Map:", True, (255, 255, 255))
+        screen.blit(title, (100, 30))
 
-        screen.fill((30, 30, 30))
-        txt_surface = font.render(text, True, color)
-        width = max(400, txt_surface.get_width()+10)
-        input_box.w = width
-        screen.blit(txt_surface, (input_box.x+5, input_box.y+5))
-        pygame.draw.rect(screen, color, input_box, 2)
+        # Draw list
+        for i, name in enumerate(maps[scroll_offset:scroll_offset + max_display]):
+            y = start_y + i * (item_height + padding)
+            rect = pygame.Rect(100, y, 400, item_height)
+            hover = rect.collidepoint(mouse_x, mouse_y)
 
-        prompt = font.render("Enter Map Name:", True, (255, 255, 255))
-        screen.blit(prompt, (100, 40))
+            pygame.draw.rect(screen, (70, 70, 70) if hover else (50, 50, 50), rect)
+            pygame.draw.rect(screen, (200, 200, 200), rect, 2)
+            text_surface = font.render(name, True, (255, 255, 255))
+            screen.blit(text_surface, (rect.x + 10, rect.y + 10))
+
+        button_back.draw(screen)
 
         pygame.display.flip()
+        clock.tick(60)
 
 def draw_menu_screen():
+    pygame.event.clear()
     screen.fill(GREEN1)  # Fill the background with (COLOR)
 
 
@@ -171,6 +196,7 @@ def draw_menu_screen():
 def sentry_mode():
 
     print("Sentry Mode activated!")
+    pygame.event.clear()
     control_panel_width = 100# Width of the control panel
     control_panel_height = 30# Height of the control panel
     control_panel_surface = pygame.Surface((control_panel_width, control_panel_height))
@@ -219,8 +245,9 @@ def sentry_mode():
 
 def pathing_mode():
     ## Setup ##
+    pygame.event.clear()
     screen.fill(GREEN1)
-    map_files = get_map_files()
+    map_files = get_map_dir()
     scroll_offset = 0
     max_visible = 6
     selected_map = None
@@ -255,7 +282,14 @@ def pathing_mode():
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
                 if button_back.is_clicked(mouse_pos, True):
-                    running = False
+                    #running = False
+                    chosen_map = choose_map(screen)
+
+                    if chosen_map != None:
+                        print("map selected. Next step is to add the pathing logic here")
+                    else:
+                        print("No map selected. Returning to main menu.")
+                        return STATE_MENU
                 for btn, map_name in map_buttons:
                     if btn.is_clicked(mouse_pos, True):
                         selected_map = map_name
@@ -273,10 +307,76 @@ def pathing_mode():
     return STATE_MENU
 
 def mapping_mode():
-    atexit.register(cleanup)
-    rtk_thread = None
-    screen.fill(GREEN1) 
-    is_mapping = False
+    
+    def write_new_map():
+        input_surface = pygame.Surface((WIDTH, HEIGHT))
+        font = pygame.font.SysFont(None, 48)
+        input_box = pygame.Rect(100, 200, 400, 50)
+        color_inactive = pygame.Color('lightskyblue3')
+        color_active = pygame.Color('dodgerblue2')
+        color = color_inactive
+        active = False
+        text = ''
+        done = False
+
+        while not done:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    exit()
+
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    # If the user clicked on the input_box rect.
+                    if input_box.collidepoint(event.pos):
+                        active = not active
+                    else:
+                        active = False
+                    color = color_active if active else color_inactive
+                    if button_back.is_clicked(event.pos, True):
+                        return None
+
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        print("DEBUG esc pressed")
+                        done = True
+                        return None                 
+                    if active:
+                        if event.key == pygame.K_ESCAPE:
+                            print("DEBUG esc pressed")
+                            done = True
+                            return None
+                        if event.key == pygame.K_RETURN:
+                            done = True                        
+                            open("../assets/maps/" + text.strip() + ".txt", "w").close()  # Create a new file with the map name
+                            return text.strip()  # return the map name
+                        elif event.key == pygame.K_BACKSPACE:
+                            text = text[:-1]
+                        else:
+                            text += event.unicode
+
+            input_surface.fill((30, 30, 30))
+            txt_surface = font.render(text, True, color)
+            width = max(400, txt_surface.get_width()+10)
+            input_box.w = width
+            input_surface.blit(txt_surface, (input_box.x+5, input_box.y+5))
+            pygame.draw.rect(input_surface, color, input_box, 2)
+
+            prompt = font.render("Enter Map Name:", True, (255, 255, 255))
+            input_surface.blit(prompt, (100, 140))
+
+            button_back.draw(input_surface)
+
+            # Blit input_surface to screen
+            screen.blit(input_surface, (0, 0))
+            pygame.display.flip()
+
+        return None
+    
+
+
+    ## INIT ## 
+    rtk_thread = threading.Thread(target=launch_rtk_loop, daemon=True)
+    rtk_thread.start()
     motor_driver = MotorDriver()
     speed = 0.3
     controls_font = pygame.font.Font(None, 28)
@@ -286,11 +386,12 @@ def mapping_mode():
     control_panel_surface.set_alpha(150)  # Set transparency (0-255, where 255 is fully opaque)
     control_panel_surface.fill((0, 0, 0))  # Fill with black color
 
+    
     ## Main Loop ##
     running = True
     while running:
-        
         screen.fill(GREEN1)
+
         ## Keys & Inputs ##
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -320,61 +421,56 @@ def mapping_mode():
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
                 if button_back.is_clicked(mouse_pos, True):
+                    if rtk_thread and rtk_thread.is_alive():
+                        cleanup()
+                    pygame.event.clear()                   
                     running = False
-                if button_increase_speed.is_clicked(mouse_pos, True):
+                    return STATE_MENU
+                elif button_save_map.is_clicked(mouse_pos, True):
+                    print("Saving map...")
+                    if rtk_thread and rtk_thread.is_alive():
+                        cleanup()
+                    pygame.event.clear()
+                    running = False
+                    return STATE_MENU
+                elif button_delete_map.is_clicked(mouse_pos, True):
+                    print("Deleting map...")
+                    os.remove(file_path)
+                    print("Map deleted.")
+                    if rtk_thread and rtk_thread.is_alive():
+                        cleanup()
+                    pygame.event.clear()
+                    running = False
+                    return STATE_MENU
+                elif button_increase_speed.is_clicked(mouse_pos, True):
                     speed = min(speed + 0.1, 1.0)
                     print("Speed Increased!")
                 elif button_decrease_speed.is_clicked(mouse_pos, True):
                     speed = max(speed - 0.1, 0.1)
                     print("Speed Decreased!")
-                elif button_begin_mapping.is_clicked(mouse_pos, True):
-                    screen.fill(GREEN1)
-                    pygame.display.flip()
-                    print("Mapping Started")
-                    is_mapping = True
-                    rtk_thread = threading.Thread(target=launch_rtk_loop, daemon=True)
-                    rtk_thread.start()
-
-                    map_name = get_map_name(screen)
-                    file_path = f"../assets/maps/{map_name}.txt"
-
-                    lawn_map = LawnMowerMapping(out_file_path = file_path)
-
-                elif button_currently_mapping.is_clicked(mouse_pos, True):
-                    screen.fill(GREEN1)
-                    pygame.display.flip()
-                    print("Stopping Mapping")
-                    is_mapping = False
-                    print("mapping = ")
-                    print(is_mapping)
-                    cleanup()
-
-            
-
-        if is_mapping:
-            button_currently_mapping.draw(screen) 
-            button_increase_speed.draw(screen)
-            button_decrease_speed.draw(screen)
-            screen.blit(control_panel_surface, (20, 530))  # Position of the control panel
-            controls_text = [
-                "Speed: " + str(round(speed*100,1))+ "%",
-                "Controls: Arrow Keys",
-                "Blade Act.: '0' Key",
-            ]
-            y_offset = 10  # Starting offset for text drawing (within the background)
-            for line in controls_text:
-                control_line = controls_font.render(line, True, (255, 255, 255))
-                screen.blit(control_line, (30, 540 + y_offset))  # Adjust position within the panel
-                y_offset += 30  # Move down for the next line
-        else:
-            button_begin_mapping.draw(screen)
-
-                    
-        # ## Update GUI ##
+        
+        button_delete_map.draw(screen)
+        button_save_map.draw(screen)
+        button_increase_speed.draw(screen)
+        button_decrease_speed.draw(screen)
         button_back.draw(screen)
+        screen.blit(control_panel_surface, (20, 530))  # Position of the control panel
+    
+        ## Draw Controls ## 
+        controls_text = [
+            "Speed: " + str(round(speed*100,1))+ "%",
+            "Controls: Arrow Keys",
+            "Blade Act.: '0' Key",
+        ]
+        y_offset = 10  # Starting offset for text drawing (within the background)
+        for line in controls_text:
+            control_line = controls_font.render(line, True, (255, 255, 255))
+            screen.blit(control_line, (30, 540 + y_offset))  # Adjust position within the panel
+            y_offset += 30  # Move down for the next line
 
         ## Update Display (last) ##
         pygame.display.flip()
+
     ## Exit Process ##
     if rtk_thread and rtk_thread.is_alive():
         cleanup()
@@ -383,6 +479,7 @@ def mapping_mode():
 
 def rc_mode():
     ## Function Setup ##
+    pygame.event.clear()
     motor_driver = MotorDriver()
     speed = 0.3
     controls_font = pygame.font.Font(None, 28)
@@ -467,6 +564,8 @@ def rc_mode():
     return STATE_MENU
 
 def run_menu():
+    print("DEBUG menu screen activated")
+    last_state = None
     running = True
     while running:
         for event in pygame.event.get():
@@ -485,8 +584,15 @@ def run_menu():
             return STATE_RC
         
         elif button_mapping.is_clicked(mouse_pos, mouse_click):
-            print("Mapping Selected")
-            return STATE_MAPPING
+            # Only allow transition to mapping if we weren't just there
+            if last_state != STATE_MAPPING:
+                print("Mapping Selected")
+                last_state = STATE_MAPPING
+                return STATE_MAPPING
+            else:
+                print("DEBUG: Preventing immediate re-entry to mapping mode")
+                pygame.event.clear()
+                pygame.time.delay(200)  # Add small delay
 
         elif button_sentry.is_clicked(mouse_pos, mouse_click):
             print("Sentry Mode Selected")
@@ -512,7 +618,6 @@ def run_menu():
 
 
 if __name__ == "__main__":
-    atexit.register(cleanup)
 
     while current_state != STATE_QUIT:
         if current_state == STATE_MENU:
@@ -523,6 +628,8 @@ if __name__ == "__main__":
             current_state = rc_mode()
 
         elif current_state == STATE_MAPPING:
+            print(current_state)
+            print("thats the state ^^^^^^^")
             current_state = mapping_mode()
 
         elif current_state == STATE_SENTRY:
