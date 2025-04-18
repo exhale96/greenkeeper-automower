@@ -376,7 +376,7 @@ def mapping_mode():
     rtk_thread = threading.Thread(target=launch_rtk_loop, daemon=True)
     rtk_thread.start()
     motor_driver = MotorDriver()
-    speed = 0.3
+    speed = 0.4
     controls_font = pygame.font.Font(None, 28)
     control_panel_width = 210# Width of the control panel
     control_panel_height = 180# Height of the control panel

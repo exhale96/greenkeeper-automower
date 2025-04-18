@@ -203,7 +203,7 @@ class MotorDriver:
         else:
             self.set_motor(base_speed - correction, base_speed + correction)
 
-    def turn_left_to_90(self, angle=90):
+    def turn_left(self, angle=90):
         
         start_angle = self.read_imu()
         target_angle = (start_angle + angle) % 360
@@ -220,7 +220,7 @@ class MotorDriver:
             self.set_motor(0, 0.1)
             time.sleep(0.1)
 
-    def turn_right_to_90(self, angle=90):
+    def turn_right(self, angle=90):
         start_angle = self.read_imu()
         target_angle = (start_angle - angle) % 360
         print(f"Starting angle: {start_angle}")
@@ -236,28 +236,11 @@ class MotorDriver:
             self.set_motor(0.1, 0)
             time.sleep(0.1)
 
-    def turn_left(self, angle=90):
-        angle = angle - 3
-        start_angle = self.read_imu()
-        last_angle = start_angle
-        total_turned = 0
-
-        self.set_motor(-0.25, 0.25)  # Turn left0
-
-        while total_turned < angle:
-            current_angle = self.read_imu()
-            delta = (current_angle - last_angle + 360) % 360
-
-            if delta < 180:
-                total_turned += delta
-            last_angle = current_angle
-            print(f"Current angle: {current_angle}, Total turned: {total_turned}")
-            time.sleep(0.05)
-        self.stop_motors()
 
 if __name__ == "__main__":
     driver = MotorDriver()
 
+    """
     RUN_TIME_SEC = 5
     print(f"Running motors at 10% speed for {RUN_TIME_SEC} seconds...")
     driver.set_motor(0.1, 0.1)
@@ -272,7 +255,7 @@ if __name__ == "__main__":
         print("Interrupted.")
 
     driver.stop_motors()
-    print("Motors stopped.")
+    print("Motors stopped.")"""
 
     # print("Testing IMU-based right turn...")
     # driver.turn_right_to_90()
@@ -295,8 +278,8 @@ if __name__ == "__main__":
     time.sleep(2)
     """
 
-    driver.stop_motors()
-    time.sleep(2)
+    #driver.stop_motors()
+    #time.sleep(2)
 
     # print("IMU test sequence complete.")
 

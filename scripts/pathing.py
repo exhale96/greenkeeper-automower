@@ -15,15 +15,9 @@ class Pathing:
         self.left_val = 0
         self.right_val = 0
         self.blade_val = 0
-
         self.motors = MotorDriver()
-
-        # Load the map data from the file
         self.boundary = self.load_map_data(self.map_file)
-
-        # position will be of the form (lon, lat)
-        self.current_position = self.get_current_gps()
-
+        self.start_gps = None # position will be of the form (lon, lat)
         self.boundary_polygon = Polygon(self.boundary)
 
         # Create zigzag path based on the loaded boundary
@@ -38,6 +32,10 @@ class Pathing:
             points = []
             for line in lines:
                 points.append(tuple(map(float, line.strip().split(','))))
+            if len(points) < 5:
+                return None
+            return points
+
 
     def get_current_gps(self):
         with open(self.gps_file, 'r') as file:
@@ -84,7 +82,7 @@ class Pathing:
             pos = self.get_current_gps()
             if pos and self.is_inside_boundary(pos):
                 print("Robot is inside the boundary.")
-                start_lon, start_lat = pos
+                self.start_gps = pos # set starting point
                 break
             print("Waiting for robot to be inside the boundary...")
             time.sleep(1)  # wait for a second before checking again
@@ -102,29 +100,37 @@ class Pathing:
         rotated = pca.transform(coords)
         polygon_rotated = Polygon(rotated)
 
+        # Transform the start GPS to PCA space
+        start_point_rotated = pca.transform([self.start_gps])(0)
+        start_x = start_point_rotated[0]
+
+
         minx, miny, maxx, maxy = polygon_rotated.bounds
-        step = spacing_meters * meter_to_deg_lon
+        step = spacing_meters * np.linalg.norm(pca.components_[0]) * meter_to_deg_lon  # convert meters to PCA space step size
+
+        x = minx
+        while x + step < start_x:
+            x += step
+
 
         lines = []
         x = minx
         direction = True
         while x <= maxx:
-            if direction:
-                line = LineString([(x, miny), (x, maxy)])  # vertical line from miny to maxy
-            else:
-                line = LineString([(x, maxy), (x, miny)])
-            clipped = line.intersection(polygon_rotated)  # clip the line to the polygon
+            line = LineString([(x, miny), (x, maxy)]) if direction else LineString([(x, maxy), (x, miny)])
+            clipped = line.intersection(polygon_rotated)
             if not clipped.is_empty:
                 if isinstance(clipped, LineString):
-                    lines.append(list(clipped.coords))  # add the coordinates of the clipped line
+                    lines.append(list(clipped.coords))
                 elif isinstance(clipped, MultiLineString):
                     for subline in clipped.geoms:
                         lines.append(list(subline.coords))
+            # move to the next step
             x += step
             direction = not direction
         
         # inverse transform the coordinates back to original space
-        rotated_path = [pt for segment in lines for pt in segment]
+        rotated_path = [pt for segment in lines for pt in (segment if direction else segment[::-1])]
         path = pca.inverse_transform(rotated_path)
         path = [tuple(pt) for pt in path]
 
@@ -214,55 +220,19 @@ class Pathing:
             self.move_to_next_point(target_point)  # Move towards the target point
 
 
-    def move_forward(self, duration = 0, speed=0.45):
-        if duration > 0:
-            self.motors.set_motor(speed, speed*0.93)
-            time.sleep(duration)
-            self.motors.set_motor(0, 0)
-        else:
-            self.motors.set_motor(speed, speed*0.93)
+    def move_forward(self, speed=0.3):
+        self.motors.set_motor(speed, speed*0.93)
 
 
-    def move_backward(self, duration = 0, speed=0.25):
-        if duration > 0:
-            self.motors.set_motor(-speed, -speed)
-            time.sleep(duration)
-            self.motors.set_motor(0, 0)
-        else:
-            self.motors.set_motor(-speed, -speed)
+    def move_backward(self, speed=0.3):
+        self.motors.set_motor(-speed, -speed)
 
-    def turn_left(self, duration=1, speed=0.48):
+    def turn_left(self, speed=0.3):
         self.motors.set_motor(0, speed)
-        time.sleep(duration)
-        self.motors.set_motor(0, 0)
 
-    def turn_right(self, duration=1, speed=0.45):
+
+    def turn_right(self, speed=0.3):
         self.motors.set_motor(speed, 0)
-        time.sleep(duration)
-        self.motors.set_motor(0, 0)
-
-    def test_grid_movement(self):
-        zigzag_steps = 3
-        forward_time = 2
-        side_step_time = 1
-        for z in range(zigzag_steps):
-            print(z)
-            # Upper zigzag
-            if z % 2 == 0:          
-                self.move_forward(duration=forward_time)
-                
-                time.sleep(0.5)
-                self.turn_right()
-                self.move_forward(duration=side_step_time)
-                self.turn_right()
-            else:
-                self.move_forward(duration=forward_time)
-                time.sleep(0.5)
-                self.turn_left()
-                self.move_forward(duration=side_step_time)
-                self.turn_left()
-
-
 
 
 """
