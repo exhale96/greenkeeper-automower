@@ -1,4 +1,4 @@
-# 🌿 GreenKeeper
+# <img src="assets/images/GreenKeeper_logo.png" alt="GreenKeeper Icon" width="30"/> GreenKeeper
 
 Designed as a capstone project for Rutgers University New Brunswick, ECE Department. GreenKeeper is a Raspberry Pi-powered autonomous lawn robot built with computer vision, real-time controls, and a simple GUI for state management. It’s designed to map, patrol, and maintain a lawn area using onboard sensors and smart pathing algorithms, while avoiding obstacles using models like yolov8n and MiDaS. 
 ![](assets/images/gkgifnano.gif)
