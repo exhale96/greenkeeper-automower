@@ -98,7 +98,7 @@ def launch_rtk_loop():
         "-p", "none", 
         "rtk2go.com", 
         "2101", 
-        "NJ_north_central"
+        "VIAM_BASE2"
     ])
     return_code = rtk_process.wait()
     print(f"RTK process exited with code: {return_code}")
@@ -117,23 +117,23 @@ def get_map_dir():
     maps_dir = os.path.join("..","assets", "maps")
     return [f for f in os.listdir(maps_dir) if os.path.isfile(os.path.join(maps_dir, f))]
 
-def choose_map(surface):
+def choose_map():
     pygame.event.clear()
     font = pygame.font.SysFont(None, 36)
     title_font = pygame.font.SysFont(None, 48)
     map_dir = "../assets/maps/"
     maps = [f for f in os.listdir(map_dir) if f.endswith(".txt")]
-
     item_height = 50
     padding = 10
     start_y = 100
     scroll_offset = 0
     max_display = 8  # number of items visible at once
-
     clock = pygame.time.Clock()
     done = False
+    chosen_map = None
 
     while not done:
+        
         screen.fill((30, 30, 30))
         mouse_x, mouse_y = pygame.mouse.get_pos()
 
@@ -144,7 +144,7 @@ def choose_map(surface):
                 exit()
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    return None
+                    done = True
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 4:  # scroll up
                     scroll_offset = max(scroll_offset - 1, 0)
@@ -154,9 +154,10 @@ def choose_map(surface):
                     for i, name in enumerate(maps[scroll_offset:scroll_offset + max_display]):
                         rect = pygame.Rect(100, start_y + i * (item_height + padding), 400, item_height)
                         if rect.collidepoint(mouse_x, mouse_y):
-                            return name  # return selected map
+                            chosen_map = name
+                            done = True  # return selected map
                 elif button_back.is_clicked((mouse_x, mouse_y), True):
-                    return None
+                    done = True
             
         # Draw prompt
         title = title_font.render("Choose a Map:", True, (255, 255, 255))
@@ -177,6 +178,7 @@ def choose_map(surface):
 
         pygame.display.flip()
         clock.tick(60)
+    return chosen_map
 
 def draw_menu_screen():
     pygame.event.clear()
@@ -252,14 +254,18 @@ def pathing_mode():
     max_visible = 6
     selected_map = None
     map_buttons = []
+    rtk_thread = threading.Thread(target=launch_rtk_loop, daemon=True)
+    rtk_thread.start()
+    motor_driver = MotorDriver()
 
-    def update_map_buttons():
-        map_buttons.clear()
-        for i, map_name in enumerate(map_files[scroll_offset:scroll_offset + max_visible]):
-            btn = Button(map_name, 200, 100 + i * 60, 240, 50, PINK)
-            map_buttons.append((btn, map_name))
 
-    update_map_buttons()
+    chosen_map = choose_map()
+    if chosen_map is None:
+        print("No Map Selected, returning to the menu")
+        if rtk_thread and rtk_thread.is_alive():
+            cleanup()
+        pygame.event.clear()
+        return STATE_MENU
 
     running = True
     while running:
@@ -271,14 +277,6 @@ def pathing_mode():
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     return STATE_MENU
-                elif event.key == pygame.K_DOWN:
-                    if scroll_offset + max_visible < len(map_files):
-                        scroll_offset += 1
-                        update_map_buttons()
-                elif event.key == pygame.K_UP:
-                    if scroll_offset > 0:
-                        scroll_offset -= 1
-                        update_map_buttons()
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
                 if button_back.is_clicked(mouse_pos, True):
@@ -287,6 +285,8 @@ def pathing_mode():
 
                     if chosen_map != None:
                         print("map selected. Next step is to add the pathing logic here")
+                        robot_pather 
+
                     else:
                         print("No map selected. Returning to main menu.")
                         return STATE_MENU
@@ -306,9 +306,7 @@ def pathing_mode():
     print("Returning to main menu...") 
     return STATE_MENU
 
-def mapping_mode():
-    
-    def write_new_map():
+def write_new_map():
         input_surface = pygame.Surface((WIDTH, HEIGHT))
         font = pygame.font.SysFont(None, 48)
         input_box = pygame.Rect(100, 200, 400, 50)
@@ -369,13 +367,13 @@ def mapping_mode():
             pygame.display.flip()
 
         return None
-    
 
-
+def mapping_mode():
     ## INIT ## 
     rtk_thread = threading.Thread(target=launch_rtk_loop, daemon=True)
     rtk_thread.start()
     motor_driver = MotorDriver()
+    
     speed = 0.4
     controls_font = pygame.font.Font(None, 28)
     control_panel_width = 210# Width of the control panel

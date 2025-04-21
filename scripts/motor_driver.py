@@ -112,8 +112,8 @@ class MotorDriver:
         ENCODER_RIGHT_A = 23  # GPIO pin for right motor encoder A
         ENCODER_RIGHT_B = 24  # GPIO pin for right motor encoder B
                 # encoder setup
-        self.left_encoder = Encoder(ENCODER_LEFT_A, ENCODER_LEFT_B)
-        self.right_encoder = Encoder(ENCODER_RIGHT_A, ENCODER_RIGHT_B)
+        #self.left_encoder = Encoder(ENCODER_LEFT_A, ENCODER_LEFT_B)
+        #self.right_encoder = Encoder(ENCODER_RIGHT_A, ENCODER_RIGHT_B)
 
 
         

@@ -1,70 +1,66 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import time
-import os
-import signal
-import subprocess
-import atexit
 from datetime import datetime
-import threading
+from pathing import Pathing
 
 class LawnMowerMapping:
-    def __init__(self, out_file_path, gps_file_path='../assets/raw_gps.txt'):
-        self.gps_file = open(gps_file_path, 'r')
-        self.path = []
-        self.latitudes = []
-        self.longitudes = []
-        self.paused = False
-        self.out_file_path = out_file_path
+    def __init__(self, out_file_path, gps_file_path='../assets/raw_gps.txt', update_interval=0.1):
+        # dir to open raw_gps.txt file
+        self.gps_file_path = gps_file_path
+
+        # self.path = []
+        # self.latitudes = []
+        # self.longitudes = []
+        # self.paused = False
+
+        # file to write to 
+        self.out_file_path = out_file_path  
+        self.update_interval = update_interval
         
 
-        # # Initialize plot
+        # Plot initialization code
         # plt.ion()
         # self.fig, self.ax = plt.subplots()
         # self.ax.set_xlabel("Longitude")
         # self.ax.set_ylabel("Latitude")
         # self.ax.set_title("GPS Path Trace")
+        # plt.show(block=False)
 
+    # keep reading gps coordinates until program stops
     def read_gps_coordinates(self):
-        """Reads new GPS coordinates from the file."""
-
-        try:
-            if not self.paused:
-                line = self.gps_file.readline().strip()
-                if not line:
-                    time.sleep(self.update_interval)
-                    return
+        with open(self.gps_file_path, 'r') as file:
+            while True:
                 try:
-                    parts = line.split(',')
-                    if len(parts) > 6 and parts[0] == '$GNGGA':
-                        print("Received GPS data")
-                        print(parts)
-                        lon, lat = self.nmea_to_decimal(parts[2], parts[3], parts[4], parts[5])
-                        # check if lon and lat are not empty 
-                        if lon == '' or lat == '':
-                            print("Invalid GPS data received.")
-                            return
-                        print(f"Latitude: {lat}, Longitude: {lon}")
-                        self.path.append((lon, lat))
-                        self.latitudes.append(lat)
-                        self.longitudes.append(lon)
-                        # save lon,lat to map file used for lawn mower pathing
-                        with open(self.out_file_path, 'a') as out_file:
-                            out_file.write(f"{lon},{lat}\n")
+                    if not self.paused:
+                        self.gps_file.seek(0, 2)
+                        line = self.gps_file.readline().strip()
+                        if not line:
+                            time.sleep(self.update_interval)
+                            continue
+                        parts = line.split(',')
+                        if len(parts) > 6 and parts[0] == '$GNGGA':
+                            print("\nReceived GPS data")
+                            print(parts)
+                            lon, lat = self.nmea_to_decimal(parts[2], parts[3], parts[4], parts[5])
+                            # check if lon and lat are not empty 
+                            if lon == '' or lat == '':
+                                print("Invalid GPS data received.")
+                                continue
+                            print(f"Latitude: {lat}, Longitude: {lon}")
+                            # self.path.append((lon, lat))
+                            # self.latitudes.append(lat)
+                            # self.longitudes.append(lon)
 
-                except ValueError:
-                    return
-            
-            # self.update_plot()
-        except FileNotFoundError:
-            print(f"File {self.file_path} not found. Waiting for file to be created.")
-            time.sleep(self.update_interval)
-            return
-        except KeyboardInterrupt:
-            print("Stopping the lawn map update.")
-            return
-        # plt.ioff()
-        # plt.show()
+                            # save lon,lat to map file used for lawn mower pathing
+                            with open(self.out_file_path, 'a') as out_file:
+                                out_file.write(f"{lon},{lat}\n")
+                    time.sleep(self.update_interval)
+                    # self.update_plot()
+                except Exception as e:
+                    print(f"Error reading GPS data: {e}")
+                    time.sleep(self.update_interval)
+
 
     def nmea_to_decimal(self, lat_deg, lat_dir, lon_deg, lon_dir):
         """Converts NMEA format to decimal degrees."""
@@ -80,10 +76,11 @@ class LawnMowerMapping:
 
     def close(self):
         """Close the file and plot."""
-        self.gps_file.close()
-        #plt.close(self.fig)
+        # self.gps_file.close()
+        # plt.ioff()
+        # plt.close(self.fig)
 
-    """
+"""    
     def update_plot(self):
 
         self.ax.clear()
@@ -103,51 +100,4 @@ class LawnMowerMapping:
         
         plt.draw()
         plt.pause(self.update_interval)
-    """    
-
-
-
-# def launch_rtk_loop():
-#     global rtk_process
-#     email = "irc16@scarletmail.rutgers.edu"
-#     print("Launching RTK process...")
-#     rtk_process = subprocess.Popen([
-#         "python", "rtk_coords.py", 
-#         "-u", email, 
-#         "-p", "none", 
-#         "rtk2go.com", 
-#         "2101", 
-#         "NJ_north_central"
-#     ], preexec_fn=os.setsid)
-#     print(f"RTK process started with PID: {rtk_process.pid}")
-#     return_code = rtk_process.wait()
-#     print(f"Exit code: {return_code}")
-    
-
-
-# def cleanup():
-#     print("Cleaning up... Terminating RTK process (if running).")
-#     try:
-#         if rtk_process.poll() is None:
-#             rtk_process.terminate()
-#             rtk_process.wait(timeout=5)
-#             print("RTK process cleaned.")
-#     except Exception as e:
-#         print(f"Could not terminate RTK process: {e}")
-
-
-
-
-# if __name__ == "__main__":
-#     rtk_thread = threading.Thread(target=launch_rtk_loop, daemon=True)
-#     rtk_thread.start()
-
-
-#     lawn_mower_map = LawnMowerMapping(out_file_path='../assets/maps/map1.txt', update_interval=0.05)
-#     try:
-#         for _ in range(10):
-#             lawn_mower_map.read_gps_coordinates()
-#     except KeyboardInterrupt:
-#         print("Stopping the lawn map update.")
-
-#     atexit.register(cleanup)
+"""
