@@ -304,7 +304,8 @@ def pathing_mode():
         print("No Map Selected, returning to the menu")
         pygame.event.clear()
         return STATE_MENU
-
+    # reset raw_gps.txt before writing new data
+    open("../assets/raw_gps.txt", "w").close()  # Clear the file
     rtk_thread = threading.Thread(target=launch_rtk_loop, daemon=True)
     rtk_thread.start()
 
@@ -432,6 +433,7 @@ def mapping_mode():
         pygame.event.clear()
         return STATE_MENU
     
+    open("../assets/raw_gps.txt", "w").close()  # Clear the file
     # start rtk process
     rtk_thread = threading.Thread(target=launch_rtk_loop, daemon=True)
     rtk_thread.start()
@@ -470,9 +472,9 @@ def mapping_mode():
                     motor_driver.set_motor(-speed, speed)
                 elif event.key == pygame.K_0:
                     print("0 pressed: Activating Blade Motor")
-                    motor_driver.set_blade(0.3)
+                    motor_driver.set_blade(0.2)
             elif event.type == pygame.KEYUP:
-                if event.key in [pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT]:
+                if event.key in [pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_0]:
                     print("Key Released: Stop Motors")
                     motor_driver.stop_motors()
             elif event.type == pygame.MOUSEBUTTONDOWN:

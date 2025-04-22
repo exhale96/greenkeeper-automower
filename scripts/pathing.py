@@ -6,6 +6,8 @@ from sklearn.decomposition import PCA
 import math
 import sys
 from motor_driver import MotorDriver
+import webbrowser
+import os
 
 class Pathing:
     def __init__(self, map_file, gps_file='../assets/raw_gps.txt'):
@@ -144,6 +146,7 @@ class Pathing:
                 current = self.get_current_gps()
                 if not current:
                     continue
+                self.generate_map()
                 dist = self.calculate_distance(current, target)
                 if dist < distance_threshold:
                     self.motors.set_motor(0, 0)
@@ -184,7 +187,57 @@ class Pathing:
         a = math.sin(dphi / 2)**2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2)**2
         c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
         return r * c
-    
+        
+    def generate_map(self):
+        if not self.boundary:
+            return
+
+        current_gps = self.get_current_gps()
+        if not current_gps:
+            return
+
+        boundary_js = ",".join(f"[{lat},{lon}]" for lon, lat in self.boundary)
+        current_lat, current_lon = current_gps[1], current_gps[0]
+
+        html = f"""<!DOCTYPE html>
+    <html>
+    <head>
+        <title>Live Pathing Map</title>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="refresh" content="3">
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    </head>
+    <body>
+        <div id="map" style="height: 100vh;"></div>
+        <script>
+            var map = L.map('map').setView([{current_lat}, {current_lon}], 18);
+            L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
+                maxZoom: 22,
+                attribution: '© OpenStreetMap contributors'
+            }}).addTo(map);
+
+            var boundary = L.polygon([{boundary_js}], {{color: 'green'}}).addTo(map).bindPopup("Boundary");
+            var marker = L.circleMarker([{current_lat}, {current_lon}], {{
+                color: 'blue',
+                radius: 8,
+                fillColor: '#00f',
+                fillOpacity: 0.8
+            }}).addTo(map).bindPopup("Current Location");
+        </script>
+    </body>
+    </html>"""
+
+        html_path = "../assets/live_map/pathing_map.html"
+        with open(html_path, 'w') as f:
+            f.write(html)
+
+        # Open in browser once
+        if not hasattr(self, 'browser_opened'):
+            webbrowser.open('file://' + os.path.realpath(html_path))
+            self.browser_opened = True
+            
 
 def main():
     map_file = sys.argv[1]

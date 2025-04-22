@@ -1,65 +1,56 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import time
-from datetime import datetime
-import subprocess
 import sys
-
+import webbrowser
+import os
 
 class LawnMowerMapping:
     def __init__(self, out_file_path, gps_file_path='../assets/raw_gps.txt', update_interval=0.1):
         # dir to open raw_gps.txt file
         self.gps_file_path = gps_file_path
 
-        # self.path = []
-        # self.latitudes = []
-        # self.longitudes = []
+        self.path = []
+        self.latitudes = []
+        self.longitudes = []
         self.paused = False
 
         # file to write to 
         self.out_file_path = out_file_path  
         self.update_interval = update_interval
         
-
         # Plot initialization code
-        # plt.ion()
-        # self.fig, self.ax = plt.subplots()
-        # self.ax.set_xlabel("Longitude")
-        # self.ax.set_ylabel("Latitude")
-        # self.ax.set_title("GPS Path Trace")
-        # plt.show(block=False)
+        self.html_file = "../assets/live_map/live_map.html"
+        self.generate_map()
+
 
     # keep reading gps coordinates until program stops
     def read_gps_coordinates(self):
         with open(self.gps_file_path, 'r') as file:
+            file.seek(0, os.SEEK_END)
             while True:
                 if not self.paused:
-                    file.seek(0, 2)
                     line = file.readline().strip()
                     if not line:
                         time.sleep(self.update_interval)
                         continue
                     parts = line.split(',')
                     if len(parts) > 6 and parts[0] == '$GNGGA':
-                        print("\nReceived GPS data")
-                        print(parts)
-                        lon, lat = self.nmea_to_decimal(parts[2], parts[3], parts[4], parts[5])
-                        # check if lon and lat are not empty 
-                        if lon == '' or lat == '':
-                            print("Invalid GPS data received.")
+                        try:
+                            print(f"\nReceived GPS data\n{parts}")
+                            lon, lat = self.nmea_to_decimal(parts[2], parts[3], parts[4], parts[5])
+                            if lon == '' or lat == '':
+                                continue
+                            print(f"New point:\nLatitude: {lat}, Longitude: {lon}")
+                            self.path.append((lon, lat))
+                            self.latitudes.append(lat)
+                            self.longitudes.append(lon)
+                            # save lon,lat to map file used for lawn mower pathing
+                            with open(self.out_file_path, 'a') as out_file:
+                                out_file.write(f"{lon},{lat}\n")
+                            self.generate_map()
+                        except:
                             continue
-                        print(f"Latitude: {lat}, Longitude: {lon}")
-                        # self.path.append((lon, lat))
-                        # self.latitudes.append(lat)
-                        # self.longitudes.append(lon)
-
-                        # save lon,lat to map file used for lawn mower pathing
-                        with open(self.out_file_path, 'a') as out_file:
-                            out_file.write(f"{lon},{lat}\n")
                 time.sleep(self.update_interval)
-                # self.update_plot()
-
-
 
 
     def nmea_to_decimal(self, lat_deg, lat_dir, lon_deg, lon_dir):
@@ -73,37 +64,55 @@ class LawnMowerMapping:
             lon_conv = -lon_conv
         return round(lon_conv, 7), round(lat_conv, 7)
     
+    def generate_map(self):
+        if not self.path:
+            return
+        center_lon, center_lat = self.path[-1]  # current/latest location
+        path = ",".join(f"[{lat},{lon}]" for lon, lat in self.path)
 
-    def close(self):
-        """Close the file and plot."""
-        # self.gps_file.close()
-        # plt.ioff()
-        # plt.close(self.fig)
-
-"""    
-    def update_plot(self):
-
-        self.ax.clear()
-        padding = 0.0001  # Small padding to ensure the plot isn't too tight
-        if self.latitudes and self.longitudes:
-            self.ax.set_xlim(min(self.longitudes) - padding, max(self.longitudes) + padding)
-            self.ax.set_ylim(min(self.latitudes) - padding, max(self.latitudes) + padding)
-            self.ax.set_xlabel("Longitude")
-            self.ax.set_ylabel("Latitude")
-            self.ax.set_title("GPS Path Trace")
-            self.ax.plot([p[0] for p in self.path], [p[1] for p in self.path], 'r-', linewidth=1)
+        html = f"""<!DOCTYPE html>
+    <html>
+    <head>
+        <title>Live Lawn Mower Map</title>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="refresh" content="3">
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    </head>
+    <body>
+        <div id="map" style="height: 100vh;"></div>
+        <script>
+            var map = L.map('map').setView([{center_lat}, {center_lon}], 18);
+            L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
+                maxZoom: 22,
+                attribution: '© OpenStreetMap contributors'
+            }}).addTo(map);
             
-            # Mark the most recent coordinate with a blue dot
-            if self.path:
-                self.ax.plot(self.longitudes[-1], self.latitudes[-1], 'bo', markersize=6, label='Current Position')
-                self.ax.legend()
-        
-        plt.draw()
-        plt.pause(self.update_interval)
-"""
+            var path = L.polyline([{path}], {{color: 'red'}}).addTo(map);
+            var currentMarker = L.circleMarker([{center_lat}, {center_lon}], {{
+                color: 'blue',
+                radius: 8,
+                fillColor: '#00f',
+                fillOpacity: 0.8
+            }}).addTo(map).bindPopup("Current Location");
+            
+            map.fitBounds(path.getBounds());
+        </script>
+    </body>
+    </html>"""
+
+        with open(self.html_file, 'w') as f:
+            f.write(html)
+
+        if not hasattr(self, 'browser_opened'):
+            webbrowser.open('file://' + os.path.realpath(self.html_file))
+            self.browser_opened = True
+
 
 def main():
     out_file_path = sys.argv[1]
+    out_file_path = "../assets/maps/" + out_file_path + ".txt"
     mapper_inst = LawnMowerMapping(out_file_path=out_file_path)
     mapper_inst.read_gps_coordinates()
 

@@ -165,9 +165,9 @@ class MotorDriver:
             self.rev.on()
             self.pwm_blade.value = abs(blade_speed)
         else:
+            self.pwm_blade.value = 0
             self.forw.off()
             self.rev.off()
-            self.pwm_blade.value = 0
 
     def stop_motors(self):
         '''Stop all motors'''
