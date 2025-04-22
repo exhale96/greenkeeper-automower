@@ -1,26 +1,28 @@
-import mapper
 import numpy as np
 import matplotlib.pyplot as plt
 import time
-from motor_driver import MotorDriver
 from shapely.geometry import Point, Polygon, LineString, MultiLineString
 from sklearn.decomposition import PCA
 import math
+import sys
+from motor_driver import MotorDriver
 
 class Pathing:
-    def __init__(self, map_file, gps_file, motor_inst=None):
+    def __init__(self, map_file, gps_file='../assets/raw_gps.txt'):
         # Robot properties
         self.map_file = map_file
         self.gps_file = gps_file
         self.blade_val = 0
-        self.motors = motor_inst
+        self.motors = MotorDriver()
         self.boundary = self.load_map_data(self.map_file)
         self.start_gps = None # position will be of the form (lon, lat)
         self.boundary_polygon = Polygon(self.boundary)
 
         # Create zigzag path based on the loaded boundary
-        self.path = self.generate_zigzag_path()
+        self.path = None
 
+    def create_path(self, spacing_meters=0.5):
+        self.path = self.generate_zigzag_path(spacing_meters)
 
     def load_map_data(self, map_file):
         # map_file contains all lon,lat points
@@ -184,9 +186,19 @@ class Pathing:
         return r * c
     
 
+def main():
+    map_file = sys.argv[1]
+    pathing_inst = Pathing(map_file=map_file)
+    
 
-"""
+
 if __name__ == "__main__":
-    robot = Pathing('./maps/lawn1.txt', 'output.txt')
-    robot.test_grid_movement()
-"""    
+    # if no args are passed, use default path
+    if len(sys.argv) < 2:
+        print("Usage: python pathing.py <output_file_path>")
+        sys.exit(1)
+    
+    # start the mapping process
+    main()
+
+

@@ -212,7 +212,7 @@ class NtripClient(object):
                             (raw_data, parsed_data) = self.nmr.read()
                             if bytes("GNGGA",'ascii') in raw_data :
                                 print(raw_data)
-                                with open('../assets/raw_gps.txt', 'w') as out_file:
+                                with open('../assets/raw_gps.txt', 'a') as out_file:
                                     out_file.write(raw_data.decode('utf-8'))
 
 

@@ -9,8 +9,8 @@ from computer_vision import process_frame, process_frame_with_midas, init_vision
 import subprocess
 import atexit
 import threading
-from mapper import LawnMowerMapping
 import os
+from pathing import Pathing
 
 
 camera_manager = CameraManager()
@@ -84,6 +84,8 @@ button_enter_mapname = Button("Click here to enter map name: ",200, 240, 290, 50
 button_increase_speed = Button("+", 70, 490, 40, 40, PINK)  # Increase button
 button_decrease_speed = Button("-", 30, 490, 40, 40, PINK) # 
 button_back = Button("<- Esc", 0, 0, 100, 50, YELLOW, GREEN1)
+button_stop_pathing = Button("Stop Pathing", 170, 170, 350, 50, (255,0,0), YELLOW)
+button_begin_pathing = Button("Begin Pathing", 200, 240, 240, 50, GREEN2, YELLOW)
 
 
 
@@ -113,8 +115,49 @@ def cleanup():
     except Exception as e:
         print(f"Could not terminate RTK process: {e}")
 
+
+def launch_mapper_loop(file = "../assets/maps/map1.txt"):
+    global mapper_process
+    
+    print("Launching mapper process...")
+    mapper_process = subprocess.Popen([
+        "python", "mapper.py", file
+    ])
+    return_code = mapper_process.wait()
+    print(f"Mapper process exited with code: {return_code}")
+
+def cleanup_mapper():
+    print("Cleaning up... Terminating Mapper process (if running).")
+    try:
+        if mapper_process.poll() is None:
+            mapper_process.terminate()
+            mapper_process.wait(timeout=5)
+            print("Mapper process cleaned.")
+    except Exception as e:
+        print(f"Could not terminate Mapper process: {e}")
+
+def launch_pathing_loop(file = "../assets/maps/map1.txt"):
+    global pathing_process
+    
+    print("Launching pathing process...")
+    pathing_process = subprocess.Popen([
+        "python", "pathing.py", file
+    ])
+    return_code = pathing_process.wait()
+    print(f"Pathing process exited with code: {return_code}")
+
+def cleanup_pathing():
+    print("Cleaning up... Terminating Mapper process (if running).")
+    try:
+        if pathing_process.poll() is None:
+            pathing_process.terminate()
+            pathing_process.wait(timeout=5)
+            print("Pathing process cleaned.")
+    except Exception as e:
+        print(f"Could not terminate RTK process: {e}")
+
 def get_map_dir():
-    maps_dir = os.path.join("..","assets", "maps")
+    maps_dir = os.path.join("..", "assets", "maps")
     return [f for f in os.listdir(maps_dir) if os.path.isfile(os.path.join(maps_dir, f))]
 
 def choose_map():
@@ -178,7 +221,7 @@ def choose_map():
 
         pygame.display.flip()
         clock.tick(60)
-    return chosen_map
+    return map_dir + chosen_map
 
 def draw_menu_screen():
     pygame.event.clear()
@@ -249,23 +292,23 @@ def pathing_mode():
     ## Setup ##
     pygame.event.clear()
     screen.fill(GREEN1)
-    map_files = get_map_dir()
-    scroll_offset = 0
-    max_visible = 6
     selected_map = None
     map_buttons = []
-    rtk_thread = threading.Thread(target=launch_rtk_loop, daemon=True)
-    rtk_thread.start()
-    motor_driver = MotorDriver()
 
 
     chosen_map = choose_map()
+    print(f"Chosen map: {chosen_map}")
     if chosen_map is None:
         print("No Map Selected, returning to the menu")
-        if rtk_thread and rtk_thread.is_alive():
-            cleanup()
         pygame.event.clear()
         return STATE_MENU
+
+    rtk_thread = threading.Thread(target=launch_rtk_loop, daemon=True)
+    rtk_thread.start()
+
+    # start pathing process
+    pathing_thread = threading.Thread(target=launch_pathing_loop, args=(chosen_map, ) , daemon=True)
+
 
     running = True
     while running:
@@ -279,30 +322,32 @@ def pathing_mode():
                     return STATE_MENU
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
-                if button_back.is_clicked(mouse_pos, True):
-                    #running = False
-                    chosen_map = choose_map(screen)
-
+                if button_begin_pathing.is_clicked(mouse_pos, True):
                     if chosen_map != None:
-                        print("map selected. Next step is to add the pathing logic here")
-                        robot_pather 
+                        print("map selected. Will begin pathing...")
+                        pathing_thread.start()
 
                     else:
                         print("No map selected. Returning to main menu.")
                         return STATE_MENU
-                for btn, map_name in map_buttons:
-                    if btn.is_clicked(mouse_pos, True):
-                        selected_map = map_name
-                        print(f"Selected map: {selected_map}")
-                        # TODO: Load or pass the selected map to your pathing logic
-                        return STATE_PATHING
-
-        for btn, _ in map_buttons:
-            btn.draw(screen)
+                
+                if button_stop_pathing.is_clicked(mouse_pos, True):
+                    print("Add stop pathing logic here")
+                    if pathing_thread and pathing_thread.is_alive():
+                        cleanup_pathing()
+                    if rtk_thread and rtk_thread.is_alive():
+                        cleanup()
+                    pygame.event.clear()
 
         button_back.draw(screen)
+        button_begin_pathing.draw(screen)
+        button_stop_pathing.draw(screen)
         pygame.display.flip()
         pygame.time.delay(50)
+    if rtk_thread and rtk_thread.is_alive():
+        cleanup()
+    if pathing_thread and pathing_thread.is_alive():
+        cleanup_pathing()
     print("Returning to main menu...") 
     return STATE_MENU
 
@@ -370,10 +415,7 @@ def write_new_map():
 
 def mapping_mode():
     ## INIT ## 
-    rtk_thread = threading.Thread(target=launch_rtk_loop, daemon=True)
-    rtk_thread.start()
-    motor_driver = MotorDriver()
-    
+    pygame.event.clear()
     speed = 0.4
     controls_font = pygame.font.Font(None, 28)
     control_panel_width = 210# Width of the control panel
@@ -385,10 +427,20 @@ def mapping_mode():
     file_path = write_new_map()
     if file_path is None:
         print("No file name provided. Returning to menu.")
-        if rtk_thread and rtk_thread.is_alive():
-            cleanup()
         pygame.event.clear()
         return STATE_MENU
+    
+    # start rtk process
+    rtk_thread = threading.Thread(target=launch_rtk_loop, daemon=True)
+    rtk_thread.start()
+
+    # start mapper process
+    mapper_thread = threading.Thread(target=launch_mapper_loop, args=(file_path, ) , daemon=True)
+    mapper_thread.start()
+
+
+    motor_driver = MotorDriver()
+
     ## Main Loop ##
     running = True
     while running:
@@ -425,20 +477,32 @@ def mapping_mode():
                 if button_back.is_clicked(mouse_pos, True):
                     if rtk_thread and rtk_thread.is_alive():
                         cleanup()
+                    if mapper_thread and mapper_thread.is_alive():
+                        cleanup_mapper()
                     pygame.event.clear()                   
                     running = False
                 elif button_save_map.is_clicked(mouse_pos, True):
                     print("Saving map...")
                     if rtk_thread and rtk_thread.is_alive():
                         cleanup()
+                    if mapper_thread and mapper_thread.is_alive():
+                        cleanup_mapper()
                     pygame.event.clear()
                     running = False
                 elif button_delete_map.is_clicked(mouse_pos, True):
-                    print("Deleting map...")
-                    os.remove(file_path)
-                    print("Map deleted.")
+                    # close threads before deleting
+                    if mapper_thread and mapper_thread.is_alive():
+                        cleanup_mapper()
                     if rtk_thread and rtk_thread.is_alive():
                         cleanup()
+                    
+                    # delete map
+                    if os.path.exists(file_path):
+                        print(f"Deleting map: {file_path}")
+                        os.remove(file_path)
+                        print("Map deleted.")
+
+                    
                     pygame.event.clear()
                     running = False
                 elif button_increase_speed.is_clicked(mouse_pos, True):
@@ -473,6 +537,8 @@ def mapping_mode():
     ## Exit Process ##
     if rtk_thread and rtk_thread.is_alive():
         cleanup()
+    if mapper_thread and mapper_thread.is_alive():
+        cleanup_mapper()
     print("Returning to main menu...")                 
     return STATE_MENU
 
@@ -563,8 +629,8 @@ def rc_mode():
     return STATE_MENU
 
 def run_menu():
+    pygame.event.clear()
     print("DEBUG menu screen activated")
-    last_state = None
     running = True
     while running:
         for event in pygame.event.get():
@@ -610,6 +676,9 @@ def run_menu():
     pygame.quit()
     sys.exit()
 
+atexit.register(cleanup)
+atexit.register(cleanup_mapper)
+atexit.register(cleanup_pathing)
 
 if __name__ == "__main__":
 
@@ -631,5 +700,3 @@ if __name__ == "__main__":
 
         elif current_state == STATE_PATHING:
             current_state = pathing_mode()
-
-    run_menu()

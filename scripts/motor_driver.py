@@ -1,10 +1,8 @@
 from gpiozero import PWMOutputDevice, DigitalOutputDevice, Button, Device
 import time
-import sys
 import mpu6050
 #import pygame
 #import cv2
-import numpy as np
 #from picamera2 import Picamera2
 #from computer_vision import process_frame
 #from mapper import LawnMowerMapping
@@ -84,6 +82,8 @@ class Encoder:
             self.last_time = now
         revolutions_per_sec = tick_diff / self.ticks_per_revolution / dt
         return revolutions_per_sec * 60  # convert to RPM
+    
+    
 class MotorDriver:
 
     def __init__(self):
@@ -106,12 +106,8 @@ class MotorDriver:
         self.gyro_bias_z = 0
         self.calibrate_gyro()
 
-        ENCODER_LEFT_A = 7  # GPIO pin for left motor encoder A
-        ENCODER_LEFT_B = 8  # GPIO pin for left motor encoder B
-
-        ENCODER_RIGHT_A = 23  # GPIO pin for right motor encoder A
-        ENCODER_RIGHT_B = 24  # GPIO pin for right motor encoder B
-                # encoder setup
+        
+        # encoder setup
         #self.left_encoder = Encoder(ENCODER_LEFT_A, ENCODER_LEFT_B)
         #self.right_encoder = Encoder(ENCODER_RIGHT_A, ENCODER_RIGHT_B)
 
@@ -137,10 +133,10 @@ class MotorDriver:
         self.yaw = self.yaw % 360  # Normalize
         return self.yaw
 
-    def get_wheel_speeds(self):
-        left_rpm = self.left_encoder.get_rpm()
-        right_rpm = self.right_encoder.get_rpm()
-        return left_rpm, right_rpm
+    # def get_wheel_speeds(self):
+    #     left_rpm = self.left_encoder.get_rpm()
+    #     right_rpm = self.right_encoder.get_rpm()
+    #     return left_rpm, right_rpm
 
     def set_motor(self, left_speed, right_speed):
         """
@@ -236,52 +232,3 @@ class MotorDriver:
             self.set_motor(0.1, 0)
             time.sleep(0.1)
 
-
-if __name__ == "__main__":
-    driver = MotorDriver()
-
-    """
-    RUN_TIME_SEC = 5
-    print(f"Running motors at 10% speed for {RUN_TIME_SEC} seconds...")
-    driver.set_motor(0.1, 0.1)
-
-    start_time = time.time()
-    try:
-        while time.time() - start_time < RUN_TIME_SEC:
-            left_rpm, right_rpm = driver.get_wheel_speeds()
-            print(f"Left RPM: {left_rpm:.2f}, Right RPM: {right_rpm:.2f}")
-            time.sleep(0.1)
-    except KeyboardInterrupt:
-        print("Interrupted.")
-
-    driver.stop_motors()
-    print("Motors stopped.")"""
-
-    # print("Testing IMU-based right turn...")
-    # driver.turn_right_to_90()
-    # time.sleep(1)
-
-    # print("Testing IMU-based forward movement again...")
-    # for _ in range(20):
-    #     driver.move_forward_with_heading(initial_angle)
-    #     time.sleep(0.1)
-    # driver.stop_motors()
-    # time.sleep(1)
-    # driver.stop_motors()
-    
-
-
-
-    """
-    print("Testing IMU-based right turn...")
-    driver.turn_right_to_90()
-    time.sleep(2)
-    """
-
-    #driver.stop_motors()
-    #time.sleep(2)
-
-    # print("IMU test sequence complete.")
-
-
-        
