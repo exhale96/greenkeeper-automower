@@ -144,6 +144,7 @@ class MotorDriver:
         :param left_speed: Speed from -1 (full reverse) to 1 (full forward).
         :param right_speed: Speed from -1 (full reverse) to 1 (full forward).
         """
+        print(f"Setting left motor speed: {left_speed}, right motor speed: {right_speed}")
         self.dir_left.on() if left_speed > 0 else self.dir_left.off()
         self.pwm_left.value = abs(left_speed)
 

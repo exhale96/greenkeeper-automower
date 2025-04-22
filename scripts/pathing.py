@@ -189,6 +189,8 @@ class Pathing:
 def main():
     map_file = sys.argv[1]
     pathing_inst = Pathing(map_file=map_file)
+    pathing_inst.create_path()
+    pathing_inst.follow_path()
     
 
 

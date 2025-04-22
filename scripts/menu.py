@@ -221,6 +221,8 @@ def choose_map():
 
         pygame.display.flip()
         clock.tick(60)
+    if chosen_map is None:
+        return None
     return map_dir + chosen_map
 
 def draw_menu_screen():
@@ -453,6 +455,7 @@ def mapping_mode():
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     running = False
+                
                 elif event.key == pygame.K_UP:
                     print("Up Arrow Pressed: Move Forward")
                     motor_driver.set_motor(speed, speed)
@@ -461,10 +464,10 @@ def mapping_mode():
                     motor_driver.set_motor(-speed, -speed)
                 elif event.key == pygame.K_LEFT:
                     print("Left Arrow Pressed: Turn Left")
-                    motor_driver.set_motor(-speed, speed)
+                    motor_driver.set_motor(speed, -speed)
                 elif event.key == pygame.K_RIGHT:
                     print("Right Arrow Pressed: Turn Right")
-                    motor_driver.set_motor(speed, -speed)
+                    motor_driver.set_motor(-speed, speed)
                 elif event.key == pygame.K_0:
                     print("0 pressed: Activating Blade Motor")
                     motor_driver.set_blade(0.3)
@@ -566,17 +569,16 @@ def rc_mode():
                     running = False
                 elif event.key == pygame.K_UP:
                     print("Up Arrow Pressed: Move Forward")
-                    print(speed)
                     motor_driver.set_motor(speed, speed)
                 elif event.key == pygame.K_DOWN:
                     print("Down Arrow Pressed: Move Backward")
                     motor_driver.set_motor(-speed, -speed)
                 elif event.key == pygame.K_LEFT:
                     print("Left Arrow Pressed: Turn Left")
-                    motor_driver.set_motor(-speed, speed)
+                    motor_driver.set_motor(speed, -speed)
                 elif event.key == pygame.K_RIGHT:
                     print("Right Arrow Pressed: Turn Right")
-                    motor_driver.set_motor(speed, -speed)
+                    motor_driver.set_motor(-speed, speed)
                 elif event.key == pygame.K_0:
                     print("0 pressed: Activating Blade Motor")
                     motor_driver.set_blade(0.2)
@@ -632,11 +634,19 @@ def run_menu():
     pygame.event.clear()
     print("DEBUG menu screen activated")
     running = True
+
+    waiting_for_mouse_release = True
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+            elif event.type == pygame.MOUSEBUTTONUP:
+                waiting_for_mouse_release = False
 
+        if waiting_for_mouse_release:
+            draw_menu_screen()
+            pygame.time.delay(50)
+            continue
         # Mouse events
         mouse_pos = pygame.mouse.get_pos()
         mouse_click = pygame.mouse.get_pressed()[0]
